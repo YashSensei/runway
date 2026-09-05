@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+.vite/
+
+# cloudflare
+.wrangler/
+.dev.vars
+.dev.vars.*
+worker-configuration.d.ts
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / os
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# demo artifacts
+recordings/
+*.mp4
