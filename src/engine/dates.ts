@@ -11,12 +11,32 @@ import type { ISODate } from "../types";
 
 const MS_PER_DAY = 86_400_000;
 
-/** Days since the Unix epoch for a `YYYY-MM-DD` string. */
+/**
+ * Days since the Unix epoch for a `YYYY-MM-DD` string.
+ *
+ * Anchored, not a prefix match. `Date.UTC` will happily accept out-of-range
+ * components and roll them over ("2026-13-45" -> 2027-02-14), and it remaps
+ * years 0-99 into the 1900s, so the parse is verified by reconstruction rather
+ * than trusted.
+ */
 export function toDayNumber(iso: ISODate): number {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (!match) throw new Error(`Invalid ISO date: ${iso}`);
   const [, y, m, d] = match;
-  return Math.floor(Date.UTC(Number(y), Number(m) - 1, Number(d)) / MS_PER_DAY);
+  const year = Number(y);
+  const month = Number(m);
+  const day = Number(d);
+
+  const utc = Date.UTC(year, month - 1, day);
+  const check = new Date(utc);
+  if (
+    check.getUTCFullYear() !== year ||
+    check.getUTCMonth() !== month - 1 ||
+    check.getUTCDate() !== day
+  ) {
+    throw new Error(`Invalid ISO date: ${iso}`);
+  }
+  return Math.floor(utc / MS_PER_DAY);
 }
 
 /** Inverse of `toDayNumber`. */

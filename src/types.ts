@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shared contract for the entire system.
  *
  * Money is always integer RUPEES. Never floats, never paise. The UI formats
@@ -30,6 +30,15 @@ export interface CfoRules {
   requireVendorHistory: boolean;
   /** Flag requests above this multiple of the category historical average. */
   anomalyMultiplier: number;
+  /**
+   * Total the agent may commit per department within the rolling window.
+   *
+   * Without this, a per-request ceiling is not a ceiling: three requests of
+   * ₹4L each evade a ₹5L limit. Cash abundance is not the same as authority.
+   */
+  rollingAuthorityPool: Rupees;
+  /** Window over which the pool and split-purchase detection are measured. */
+  rollingWindowDays: number;
 }
 
 export interface Company {
@@ -174,8 +183,16 @@ export interface Forecast {
   projectedMinimumWeek: number;
   /** Earliest week where projected cash falls under the threshold. */
   breachWeek: number | null;
-  /** Shortfall at the worst point; 0 when there is no breach. */
+  /** Shortfall at the worst point (the trough); 0 when there is no breach. */
   breachGap: Rupees;
+  /**
+   * Shortfall in the FIRST breaching week; 0 when there is no breach.
+   *
+   * Distinct from `breachGap`: the first week to cross the line is usually not
+   * the deepest one, and quoting the trough figure against the breach week is
+   * how a dashboard ends up contradicting its own chart.
+   */
+  breachWeekShortfall: Rupees;
   endingCash: Rupees;
   /** projectedMinimum - threshold. The agent's spendable authority. */
   headroom: Rupees;
@@ -193,7 +210,8 @@ export type RuleId =
   | "budget_overage"
   | "require_vendor_history"
   | "anomaly_multiplier"
-  | "headroom_check";
+  | "headroom_check"
+  | "aggregate_authority";
 
 export interface RuleEvaluation {
   rule: RuleId;

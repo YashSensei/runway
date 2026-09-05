@@ -25,6 +25,7 @@ import type {
   Invoice,
   LedgerState,
   ReplayResult,
+  Rupees,
   SentEmail,
   SpendRequest,
 } from "../types";
@@ -32,6 +33,12 @@ import { buildForecast, type ForecastInput } from "../engine/forecast";
 import { decide } from "../engine/decision";
 import { buildCollectionPlan, markChased, recordCommitment } from "../engine/collections";
 import { runReplay } from "../engine/replay";
+import type { PriorCommitments } from "../engine/rules";
+import {
+  validateCommitment,
+  validateSpendRequest,
+  type SpendRequestInput,
+} from "../engine/validation";
 import { baseSeed, applyShock, DEMO_REQUESTS, TODAY } from "../db/seed";
 import { buildCollectionEmail, createEmailAdapter } from "../adapters/email";
 import {
@@ -40,9 +47,13 @@ import {
   DECISION_NARRATION_SYSTEM_PROMPT,
 } from "../adapters/llm";
 import { formatINR } from "../money";
+import { addDays } from "../engine/dates";
 
 /** How often the agent wakes itself to re-forecast and defend. */
 const ALARM_INTERVAL_MS = 20_000;
+
+/** The id `applyShock` appends; used to make the scene idempotent. */
+const SHOCK_PAYABLE_ID = "AP-590";
 
 interface PersistedState extends LedgerState {
   emails: SentEmail[];
@@ -50,6 +61,21 @@ interface PersistedState extends LedgerState {
   autonomyEnabled: boolean;
   /** Last breach the agent announced, so it does not repeat itself. */
   lastBreachWeek?: number | null;
+  /** Bumped on every commit; lets long-running work detect it went stale. */
+  generation?: number;
+}
+
+/** Newest-first caps. The whole ledger is one storage value; it cannot grow forever. */
+const MAX_ACTIVITY = 400;
+const MAX_EMAILS = 60;
+
+function trimHistory(state: PersistedState): void {
+  if (state.activity.length > MAX_ACTIVITY) {
+    state.activity = state.activity.slice(-MAX_ACTIVITY);
+  }
+  if (state.emails.length > MAX_EMAILS) {
+    state.emails = state.emails.slice(-MAX_EMAILS);
+  }
 }
 
 export interface AgentEnv {
@@ -67,6 +93,18 @@ export interface AgentEnv {
 export class CompanyAgent extends DurableObject<AgentEnv> {
   private cache: PersistedState | null = null;
 
+  constructor(ctx: DurableObjectState, env: AgentEnv) {
+    super(ctx, env);
+    // Arm the alarm at construction rather than on first dashboard read.
+    // "It acts while you are logged out" is not true if it only starts once
+    // somebody logs in.
+    ctx.blockConcurrencyWhile(async () => {
+      if ((await ctx.storage.getAlarm()) === null) {
+        await ctx.storage.setAlarm(Date.now() + ALARM_INTERVAL_MS);
+      }
+    });
+  }
+
   // ---------------------------------------------------------------------
   // Persistence
   // ---------------------------------------------------------------------
@@ -78,13 +116,42 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
     return this.cache;
   }
 
-  private async save(state: PersistedState): Promise<void> {
-    this.cache = state;
-    await this.ctx.storage.put("state", state);
+  /**
+   * The only way state is allowed to change.
+   *
+   * Mutates a CLONE, and only publishes it once the write has succeeded. Two
+   * bugs are closed by that ordering:
+   *
+   *   1. Mutating the live object and then throwing (a malformed date reaching
+   *      the forecast, say) used to leave the in-memory cache poisoned while
+   *      storage still held the last good state. Every subsequent read served
+   *      corrupt data — the whole dashboard failing until someone reset it.
+   *   2. Assigning the cache before awaiting the write meant a rejected `put`
+   *      left the object serving state that does not durably exist.
+   *
+   * `fn` is synchronous on purpose. Durable Objects gate incoming events during
+   * storage operations but NOT across `fetch`, so permitting an await in here
+   * would reopen exactly the interleaving this exists to prevent.
+   */
+  private async mutate<T>(fn: (state: PersistedState) => T): Promise<T> {
+    const current = await this.load();
+    const draft = structuredClone(current);
+    const result = fn(draft);
+    draft.generation = (current.generation ?? 0) + 1;
+    trimHistory(draft);
+    await this.ctx.storage.put("state", draft);
+    this.cache = draft;
+    return result;
   }
 
   private freshState(): PersistedState {
-    return { ...baseSeed(), emails: [], replay: null, autonomyEnabled: true };
+    return {
+      ...baseSeed(),
+      emails: [],
+      replay: null,
+      autonomyEnabled: true,
+      generation: 0,
+    };
   }
 
   // ---------------------------------------------------------------------
@@ -100,6 +167,34 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
       reservations: state.reservations,
       now: TODAY,
     };
+  }
+
+  /**
+   * Autonomous spend already committed inside the rolling window.
+   *
+   * This is what turns a per-request ceiling into an actual ceiling: without
+   * it, three ₹4L requests walk straight past a ₹5L limit.
+   */
+  private priorCommitments(
+    state: PersistedState,
+    departmentId: string,
+    vendorId: string,
+  ): PriorCommitments {
+    const windowDays = state.company.rules.rollingWindowDays;
+    const cutoff = Date.now() - windowDays * 86_400_000;
+
+    let departmentWindowTotal: Rupees = 0;
+    let vendorWindowTotal: Rupees = 0;
+
+    for (const request of state.requests) {
+      if (request.status !== "approved" && request.status !== "paid") continue;
+      if (request.departmentId !== departmentId) continue;
+      if (Date.parse(request.createdAt) < cutoff) continue;
+      departmentWindowTotal += request.amount;
+      if (request.vendorId === vendorId) vendorWindowTotal += request.amount;
+    }
+
+    return { departmentWindowTotal, vendorWindowTotal, windowDays };
   }
 
   private log(
@@ -124,34 +219,27 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
   // Autonomous loop
   // ---------------------------------------------------------------------
 
-  /** Schedule the next self-wake. Idempotent. */
-  private async ensureAlarm(): Promise<void> {
-    const existing = await this.ctx.storage.getAlarm();
-    if (existing === null) {
-      await this.ctx.storage.setAlarm(Date.now() + ALARM_INTERVAL_MS);
-    }
-  }
-
   /**
    * The wake-up. Nobody triggered this.
    *
-   * Re-forecasts, and if the projection has fallen through the CFO's safety
-   * line, goes and does something about it.
+   * The next alarm is scheduled BEFORE the work, not in a `finally`. Setting it
+   * afterwards raced the runtime's own retry-on-failure, and a Durable Object
+   * has a single alarm slot, so the two schedules would clobber each other and
+   * silently drop work.
    */
   override async alarm(): Promise<void> {
-    try {
-      await this.defendCashPosition({ triggeredBy: "alarm" });
-    } finally {
-      await this.ctx.storage.setAlarm(Date.now() + ALARM_INTERVAL_MS);
-    }
+    await this.ctx.storage.setAlarm(Date.now() + ALARM_INTERVAL_MS);
+    await this.defendCashPosition({ triggeredBy: "alarm" });
   }
 
   /**
    * Autonomous cash defense.
    *
    * Diagnose -> rank receivables by whether they land before the shortfall ->
-   * chase -> record. Sending is deliberately done after state is committed so
-   * a slow mail provider cannot wedge the object.
+   * chase -> record. Sending happens after state is committed so a slow mail
+   * provider cannot wedge the object, and each send re-checks the generation
+   * counter so a concurrent reset cannot have its fresh state written into
+   * with stale conclusions.
    */
   async defendCashPosition(opts: { triggeredBy: "alarm" | "manual" }): Promise<{
     acted: boolean;
@@ -164,14 +252,18 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
     const forecast = buildForecast(this.forecastInput(state));
 
     if (forecast.breachWeek === null) {
-      // Healthy. Record the check on manual runs only — an idle agent should
+      // Healthy. Only record the check on manual runs — an idle agent should
       // not fill the log with "nothing to do" every twenty seconds.
       if (opts.triggeredBy === "manual") {
-        this.log(state, "forecast_updated", "agent", `Forecast re-run — projected minimum ${formatINR(forecast.projectedMinimum)}, no action needed.`, {
-          projectedMinimum: forecast.projectedMinimum,
-          headroom: forecast.headroom,
+        await this.mutate((draft) => {
+          this.log(
+            draft,
+            "forecast_updated",
+            "agent",
+            `Forecast re-run — projected minimum ${formatINR(forecast.projectedMinimum)}, no action needed.`,
+            { projectedMinimum: forecast.projectedMinimum, headroom: forecast.headroom },
+          );
         });
-        await this.save(state);
       }
       return { acted: false, chased: 0, breachWeek: null };
     }
@@ -195,50 +287,54 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
 
     if (plan.targets.length === 0) {
       if (state.lastBreachWeek !== forecast.breachWeek) {
-        state.lastBreachWeek = forecast.breachWeek;
-        this.log(
-          state,
-          "breach_detected",
-          "agent",
-          `Projected cash breaches the ${formatINR(forecast.threshold)} safety threshold in week ${forecast.breachWeek} — short by ${formatINR(forecast.breachGap)}. No collectable receivable would arrive in time; this needs you.`,
-          { breachWeek: forecast.breachWeek, gap: forecast.breachGap },
-        );
-        await this.save(state);
+        await this.mutate((draft) => {
+          draft.lastBreachWeek = forecast.breachWeek;
+          this.log(
+            draft,
+            "breach_detected",
+            "agent",
+            `Projected cash breaches the ${formatINR(forecast.threshold)} safety threshold in week ${forecast.breachWeek} — short by ${formatINR(forecast.breachWeekShortfall)} that week. No collectable receivable would arrive in time; this needs you.`,
+            { breachWeek: forecast.breachWeek, gap: forecast.breachGap },
+          );
+        });
       }
       return { acted: false, chased: 0, breachWeek: forecast.breachWeek };
     }
 
     const week = forecast.weeks[forecast.breachWeek - 1];
-    state.lastBreachWeek = forecast.breachWeek;
-    this.log(
-      state,
-      "breach_detected",
-      "agent",
-      `Projected cash breaches the ${formatINR(forecast.threshold)} safety threshold in week ${forecast.breachWeek}${week ? ` (${week.startDate})` : ""} — short by ${formatINR(forecast.breachGap)}.`,
-      {
-        breachWeek: forecast.breachWeek,
-        gap: forecast.breachGap,
-        projectedMinimum: forecast.projectedMinimum,
-      },
-    );
-
-    for (const skip of plan.skipped) {
-      if (/sensitive/i.test(skip.reason)) {
-        this.log(state, "system", "agent", `Holding ${skip.invoiceId} for you — ${skip.reason}`, skip);
-      }
-    }
+    const targetIds = plan.targets.map((t) => t.invoice.id);
+    const now = new Date().toISOString();
 
     // Commit "chased" before transmitting. If a send fails we would rather
-    // under-chase than double-chase a customer.
-    const now = new Date().toISOString();
-    const targetIds = plan.targets.map((t) => t.invoice.id);
-    state.invoices = state.invoices.map((inv) =>
-      targetIds.includes(inv.id) ? markChased(inv, now) : inv,
-    );
-    await this.save(state);
+    // under-chase than contact a customer twice.
+    const generation = await this.mutate((draft) => {
+      draft.lastBreachWeek = forecast.breachWeek;
+      this.log(
+        draft,
+        "breach_detected",
+        "agent",
+        `Projected cash breaches the ${formatINR(forecast.threshold)} safety threshold in week ${forecast.breachWeek}${week ? ` (${week.startDate})` : ""} — ${formatINR(forecast.breachWeekShortfall)} short that week, bottoming out at ${formatINR(forecast.projectedMinimum)} in week ${forecast.projectedMinimumWeek}.`,
+        {
+          breachWeek: forecast.breachWeek,
+          breachWeekShortfall: forecast.breachWeekShortfall,
+          gap: forecast.breachGap,
+          projectedMinimum: forecast.projectedMinimum,
+        },
+      );
+      for (const skip of plan.skipped) {
+        if (/sensitive/i.test(skip.reason)) {
+          this.log(draft, "system", "agent", `Holding ${skip.invoiceId} for you — ${skip.reason}`, skip);
+        }
+      }
+      draft.invoices = draft.invoices.map((inv) =>
+        targetIds.includes(inv.id) ? markChased(inv, now) : inv,
+      );
+      return (draft.generation ?? 0) + 1;
+    });
 
     const emailAdapter = createEmailAdapter(this.env);
     const recipientOverride = this.env.DEMO_RECIPIENT_EMAIL?.trim();
+    let stale = false;
 
     for (const target of plan.targets) {
       const message = buildCollectionEmail(
@@ -259,27 +355,49 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
         sentAt: new Date().toISOString(),
       };
 
-      const fresh = await this.load();
-      fresh.emails = [...fresh.emails, sent];
-      this.log(
-        fresh,
-        "email_sent",
-        "agent",
-        `Collection email sent — ${target.invoice.customer}, ${formatINR(target.invoice.amount)}, ${target.daysOverdue} days overdue.`,
-        { emailId: sent.id, invoiceId: target.invoice.id, simulated: result.simulated, rationale: target.rationale },
-      );
-      await this.save(fresh);
+      // The send above is a real network await, during which a reset or a
+      // shock can land. Writing this conclusion into a state generation it no
+      // longer describes is how a dashboard ends up showing a pristine
+      // baseline alongside emails chasing a shortfall that does not exist.
+      const applied = await this.mutate((draft) => {
+        const currentGeneration = draft.generation ?? 0;
+        if (currentGeneration >= generation + plan.targets.length + 2) return false;
+        if (!draft.invoices.some((inv) => inv.id === target.invoice.id && inv.chasedAt !== null)) {
+          return false;
+        }
+        draft.emails = [...draft.emails, sent];
+        this.log(
+          draft,
+          "email_sent",
+          "agent",
+          `Collection email sent — ${target.invoice.customer}, ${formatINR(target.invoice.amount)}, ${target.daysOverdue} days overdue.`,
+          {
+            emailId: sent.id,
+            invoiceId: target.invoice.id,
+            simulated: result.simulated,
+            rationale: target.rationale,
+          },
+        );
+        return true;
+      });
+
+      if (!applied) {
+        stale = true;
+        break;
+      }
     }
 
-    const after = await this.load();
-    this.log(
-      after,
-      "system",
-      "agent",
-      `Chased ${formatINR(plan.totalChased)} across ${plan.targets.length} overdue invoice${plan.targets.length === 1 ? "" : "s"} to cover a ${formatINR(plan.gap)} shortfall.`,
-      { totalChased: plan.totalChased, gap: plan.gap },
-    );
-    await this.save(after);
+    if (stale) return { acted: false, chased: 0, breachWeek: forecast.breachWeek };
+
+    await this.mutate((draft) => {
+      this.log(
+        draft,
+        "system",
+        "agent",
+        `Chased ${formatINR(plan.totalChased)} across ${plan.targets.length} overdue invoice${plan.targets.length === 1 ? "" : "s"} to cover a ${formatINR(plan.gap)} shortfall.`,
+        { totalChased: plan.totalChased, gap: plan.gap },
+      );
+    });
 
     return { acted: true, chased: plan.totalChased, breachWeek: forecast.breachWeek };
   }
@@ -295,22 +413,21 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
    * reservation there is no `fetch`, so no other request can interleave and
    * observe stale headroom. Narration is generated afterwards, deliberately.
    */
-  async submitRequest(input: {
-    idempotencyKey: string;
-    departmentId: string;
-    vendorId: string;
-    amount: number;
-    category: string;
-    description: string;
-    requestedBy: string;
-    expectedWeek: number;
-  }): Promise<{ decision: Decision; request: SpendRequest } | { error: string }> {
+  async submitRequest(
+    input: SpendRequestInput,
+  ): Promise<{ decision: Decision; request: SpendRequest } | { error: string }> {
     const state = await this.load();
+
+    const invalid = validateSpendRequest(input, state.company.forecastHorizonWeeks);
+    if (invalid) return { error: invalid };
 
     const existing = state.requests.find((r) => r.idempotencyKey === input.idempotencyKey);
     if (existing) {
       const priorDecision = state.decisions.find((d) => d.requestId === existing.id);
       if (priorDecision) return { decision: priorDecision, request: existing };
+      // Key is taken but no decision exists. Falling through would create a
+      // second request under the same key and reserve twice, so refuse.
+      return { error: `Request ${input.idempotencyKey} is already in flight` };
     }
 
     const department = state.departments.find((d) => d.id === input.departmentId);
@@ -336,6 +453,7 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
       categoryStat,
       rules: state.company.rules,
       forecastInput: this.forecastInput(state),
+      priorCommitments: this.priorCommitments(state, input.departmentId, input.vendorId),
       now: new Date().toISOString(),
     });
 
@@ -346,22 +464,34 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
           ? "rejected"
           : "escalated";
 
-    state.requests = [...state.requests, request];
-    state.decisions = [...state.decisions, decision];
-    if (reservation) state.reservations = [...state.reservations, reservation];
-
-    this.log(
-      state,
-      "decision",
-      "agent",
-      `${decision.outcome} — ${formatINR(request.amount)} for ${department.name} (${vendor.name}).`,
-      { decisionId: decision.id, requestId: request.id, outcome: decision.outcome },
-    );
-
-    await this.save(state);
+    await this.mutate((draft) => {
+      draft.requests = [...draft.requests, request];
+      draft.decisions = [...draft.decisions, decision];
+      if (reservation) {
+        draft.reservations = [...draft.reservations, reservation];
+        // Budget is an accrual control and cash is a timing control; they are
+        // deliberately separate ledgers. But the budget one was never written,
+        // which made a "quarterly budget" rule behave as a second per-request
+        // amount threshold that could never detect cumulative overspend.
+        draft.departments = draft.departments.map((d) =>
+          d.id === department.id ? { ...d, periodSpend: d.periodSpend + request.amount } : d,
+        );
+      }
+      this.log(
+        draft,
+        "decision",
+        "agent",
+        `${decision.outcome} — ${formatINR(request.amount)} for ${department.name} (${vendor.name}).`,
+        { decisionId: decision.id, requestId: request.id, outcome: decision.outcome },
+      );
+    });
 
     // Narration is an upgrade, never a dependency. Fire and forget.
-    this.ctx.waitUntil(this.narrate(decision.id, department.name, vendor.name));
+    this.ctx.waitUntil(
+      this.narrate(decision.id, department.name, vendor.name).catch(() => {
+        /* narration is cosmetic; never let it surface after the response */
+      }),
+    );
 
     return { decision, request };
   }
@@ -395,49 +525,71 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
     );
     if (!text) return;
 
-    const fresh = await this.load();
-    fresh.decisions = fresh.decisions.map((d) => (d.id === decisionId ? { ...d, narration: text } : d));
-    await this.save(fresh);
+    await this.mutate((draft) => {
+      draft.decisions = draft.decisions.map((d) =>
+        d.id === decisionId ? { ...d, narration: text } : d,
+      );
+    });
   }
 
-  /** CFO acts on an escalation. */
+  /**
+   * The CFO acts on an escalation.
+   *
+   * Guarded on status. Without it, a double-click — which the 500ms poll made
+   * a normal user action, since nothing visibly happened on the first press —
+   * appended a second reservation and consumed the headroom twice, falsifying
+   * the exact invariant this product exists to demonstrate.
+   */
   async resolveEscalation(
     requestId: string,
     action: "approve" | "reject" | "defer",
-  ): Promise<{ ok: boolean }> {
-    const state = await this.load();
-    const request = state.requests.find((r) => r.id === requestId);
-    if (!request) return { ok: false };
+  ): Promise<{ ok: boolean; error?: string }> {
+    return this.mutate((draft) => {
+      const request = draft.requests.find((r) => r.id === requestId);
+      if (!request) return { ok: false, error: "No such request" };
+      if (request.status !== "escalated") {
+        return { ok: false, error: `Request is already ${request.status}` };
+      }
 
-    if (action === "approve") {
-      request.status = "approved";
-      state.reservations = [
-        ...state.reservations,
-        {
-          id: crypto.randomUUID(),
-          requestId: request.id,
-          amount: request.amount,
-          week: request.expectedWeek,
-          createdAt: new Date().toISOString(),
-          releasedAt: null,
-        },
-      ];
-    } else if (action === "reject") {
-      request.status = "rejected";
-    } else {
-      request.status = "cancelled";
-    }
+      const now = new Date().toISOString();
 
-    state.requests = state.requests.map((r) => (r.id === requestId ? request : r));
-    this.log(
-      state,
-      "decision",
-      "human",
-      `CFO ${action === "defer" ? "deferred" : `${action}d`} ${formatINR(request.amount)} — ${request.description}.`,
-      { requestId },
-    );
-    await this.save(state);
-    return { ok: true };
+      if (action === "approve") {
+        request.status = "approved";
+        draft.reservations = [
+          ...draft.reservations,
+          {
+            id: crypto.randomUUID(),
+            requestId: request.id,
+            amount: request.amount,
+            week: request.expectedWeek,
+            createdAt: now,
+            releasedAt: null,
+          },
+        ];
+        draft.departments = draft.departments.map((d) =>
+          d.id === request.departmentId
+            ? { ...d, periodSpend: d.periodSpend + request.amount }
+            : d,
+        );
+      } else {
+        request.status = action === "reject" ? "rejected" : "cancelled";
+        // Release anything held against it, otherwise a declined request
+        // sterilises authority permanently.
+        draft.reservations = draft.reservations.map((r) =>
+          r.requestId === request.id && r.releasedAt === null ? { ...r, releasedAt: now } : r,
+        );
+      }
+
+      draft.requests = draft.requests.map((r) => (r.id === requestId ? request : r));
+      this.log(
+        draft,
+        "decision",
+        "human",
+        `CFO ${action === "defer" ? "deferred" : `${action}d`} ${formatINR(request.amount)} — ${request.description}.`,
+        { requestId },
+      );
+      return { ok: true };
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -447,66 +599,76 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
   /**
    * Record a customer's commitment.
    *
-   * In production this is driven by inbound email parsing. For the build it is
-   * invoked directly — the plumbing is staged, the effect on the forecast is
-   * entirely real.
+   * In production this would be driven by inbound email parsing. Here it is
+   * invoked directly — the plumbing is not built, the effect on the forecast
+   * is entirely real.
    */
-  async injectReply(input: {
-    invoiceId?: string;
-    amount?: number;
-    date?: string;
-  } = {}): Promise<{ ok: boolean; recovered: number }> {
+  async injectReply(
+    input: { invoiceId?: string; amount?: number; date?: string } = {},
+  ): Promise<{ ok: boolean; recovered: number; error?: string }> {
     const state = await this.load();
+
+    const horizonEnd = addDays(
+      state.company.anchorDate,
+      state.company.forecastHorizonWeeks * 7,
+    );
+    const invalid = validateCommitment(input, {
+      earliest: state.company.anchorDate,
+      latest: horizonEnd,
+    });
+    if (invalid) return { ok: false, recovered: 0, error: invalid };
 
     const chased = state.invoices.filter(
       (inv) => inv.chasedAt !== null && inv.status !== "committed" && inv.status !== "paid",
     );
     const targets: Invoice[] = input.invoiceId
-      ? state.invoices.filter((i) => i.id === input.invoiceId)
+      ? state.invoices.filter((i) => i.id === input.invoiceId && i.status !== "committed")
       : chased;
 
-    if (targets.length === 0) return { ok: false, recovered: 0 };
+    if (targets.length === 0) return { ok: false, recovered: 0, error: "Nothing outstanding to commit" };
 
-    const before = buildForecast(this.forecastInput(state));
-    let recovered = 0;
+    return this.mutate((draft) => {
+      const before = buildForecast(this.forecastInput(draft));
+      let recovered = 0;
 
-    for (const invoice of targets) {
-      const amount = input.amount ?? invoice.amount;
-      const date = input.date ?? "2026-09-25";
-      state.invoices = state.invoices.map((inv) =>
-        inv.id === invoice.id ? recordCommitment(inv, amount, date) : inv,
-      );
-      recovered += amount;
+      for (const invoice of targets) {
+        const amount = input.amount ?? invoice.amount;
+        const date = input.date ?? "2026-09-25";
+        draft.invoices = draft.invoices.map((inv) =>
+          inv.id === invoice.id ? recordCommitment(inv, amount, date) : inv,
+        );
+        recovered += amount;
+        this.log(
+          draft,
+          "reply_parsed",
+          "agent",
+          `Reply from ${invoice.customer} — commits ${formatINR(amount)} by ${date}.`,
+          { invoiceId: invoice.id, amount, date },
+        );
+      }
+
+      const after = buildForecast(this.forecastInput(draft));
       this.log(
-        state,
-        "reply_parsed",
+        draft,
+        "commitment_recorded",
         "agent",
-        `Reply from ${invoice.customer} — commits ${formatINR(amount)} by ${date}.`,
-        { invoiceId: invoice.id, amount, date },
+        `Forecast updated — projected minimum ${formatINR(before.projectedMinimum)} → ${formatINR(after.projectedMinimum)}, headroom ${formatINR(after.headroom)}.`,
+        { before: before.projectedMinimum, after: after.projectedMinimum, headroom: after.headroom },
       );
-    }
 
-    const after = buildForecast(this.forecastInput(state));
-    this.log(
-      state,
-      "commitment_recorded",
-      "agent",
-      `Forecast updated — projected minimum ${formatINR(before.projectedMinimum)} → ${formatINR(after.projectedMinimum)}, headroom ${formatINR(after.headroom)}.`,
-      { before: before.projectedMinimum, after: after.projectedMinimum, headroom: after.headroom },
-    );
+      if (before.breachWeek !== null && after.breachWeek === null) {
+        draft.lastBreachWeek = null;
+        this.log(
+          draft,
+          "breach_cleared",
+          "agent",
+          `Shortfall cleared. Projected cash stays above ${formatINR(after.threshold)} across the full horizon.`,
+          { recovered },
+        );
+      }
 
-    if (before.breachWeek !== null && after.breachWeek === null) {
-      this.log(
-        state,
-        "breach_cleared",
-        "agent",
-        `Shortfall cleared. Projected cash stays above ${formatINR(after.threshold)} across the full horizon.`,
-        { recovered },
-      );
-    }
-
-    await this.save(state);
-    return { ok: true, recovered };
+      return { ok: true, recovered };
+    });
   }
 
   // ---------------------------------------------------------------------
@@ -514,67 +676,75 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
   // ---------------------------------------------------------------------
 
   async reset(): Promise<void> {
-    const state = this.freshState();
-    this.log(state, "system", "human", "Demo state reset to baseline.", {});
-    await this.save(state);
-    await this.ctx.storage.deleteAlarm();
-    await this.ensureAlarm();
+    const fresh = this.freshState();
+    this.log(fresh, "system", "human", "Demo state reset to baseline.", {});
+    await this.ctx.storage.put("state", fresh);
+    this.cache = fresh;
+    await this.ctx.storage.setAlarm(Date.now() + ALARM_INTERVAL_MS);
   }
 
-  async applyShockScenario(): Promise<void> {
-    const state = await this.load();
-    const shocked = applyShock(state) as PersistedState;
-    shocked.emails = state.emails;
-    shocked.replay = state.replay;
-    shocked.autonomyEnabled = state.autonomyEnabled;
-    shocked.activity = state.activity;
+  /** Idempotent: clicking Shock twice must not silently double the payroll step. */
+  async applyShockScenario(): Promise<{ ok: boolean; alreadyApplied: boolean }> {
+    return this.mutate((draft) => {
+      if (draft.payables.some((p) => p.id === SHOCK_PAYABLE_ID)) {
+        return { ok: true, alreadyApplied: true };
+      }
 
-    const before = buildForecast(this.forecastInput(state));
-    const after = buildForecast(this.forecastInput(shocked));
+      const before = buildForecast(this.forecastInput(draft));
+      const shocked = applyShock(draft);
+      draft.invoices = shocked.invoices;
+      draft.payables = shocked.payables;
+      const after = buildForecast(this.forecastInput(draft));
 
-    this.log(
-      shocked,
-      "shock_applied",
-      "human",
-      `Helios pushed ${formatINR(1_500_000)} out by eight weeks and payroll stepped up ${formatINR(600_000)}.`,
-      {},
-    );
-    this.log(
-      shocked,
-      "forecast_updated",
-      "agent",
-      `Forecast re-run — projected minimum ${formatINR(before.projectedMinimum)} → ${formatINR(after.projectedMinimum)}.`,
-      { before: before.projectedMinimum, after: after.projectedMinimum },
-    );
-
-    await this.save(shocked);
+      this.log(
+        draft,
+        "shock_applied",
+        "human",
+        `Helios pushed ${formatINR(1_500_000)} out by eight weeks and payroll stepped up ${formatINR(600_000)}.`,
+        {},
+      );
+      this.log(
+        draft,
+        "forecast_updated",
+        "agent",
+        `Forecast re-run — projected minimum ${formatINR(before.projectedMinimum)} → ${formatINR(after.projectedMinimum)}.`,
+        { before: before.projectedMinimum, after: after.projectedMinimum },
+      );
+      return { ok: true, alreadyApplied: false };
+    });
   }
 
   async submitDemoRequest(key: string): Promise<unknown> {
-    const template = DEMO_REQUESTS[key];
-    if (!template) return { error: `Unknown demo request: ${key}` };
-    return this.submitRequest({ ...template, idempotencyKey: `${template.idempotencyKey}-${crypto.randomUUID()}` });
+    // Own-property check: `__proto__` and `constructor` resolve on the
+    // prototype chain and would otherwise slip past a plain truthiness test.
+    if (!Object.prototype.hasOwnProperty.call(DEMO_REQUESTS, key)) {
+      return { error: `Unknown demo request: ${key}` };
+    }
+    const template = DEMO_REQUESTS[key]!;
+    // Stable key, so pressing the button twice is genuinely idempotent rather
+    // than quietly reserving the money a second time.
+    return this.submitRequest({ ...template, idempotencyKey: template.idempotencyKey });
   }
 
   async runReplayScenario(): Promise<ReplayResult> {
-    const state = await this.load();
-    const result = runReplay({
-      historical: state.historical,
-      departments: state.departments,
-      vendors: state.vendors,
-      categoryStats: state.categoryStats,
-      rules: state.company.rules,
+    return this.mutate((draft) => {
+      const result = runReplay({
+        historical: draft.historical,
+        departments: draft.departments,
+        vendors: draft.vendors,
+        categoryStats: draft.categoryStats,
+        rules: draft.company.rules,
+      });
+      draft.replay = result;
+      this.log(
+        draft,
+        "system",
+        "human",
+        `Replayed ${result.total} prior-quarter decisions — agreed on ${result.agreed}, flagged ${result.flagged}.`,
+        {},
+      );
+      return result;
     });
-    state.replay = result;
-    this.log(
-      state,
-      "system",
-      "human",
-      `Replayed ${result.total} prior-quarter decisions — agreed on ${result.agreed}, flagged ${result.flagged}.`,
-      {},
-    );
-    await this.save(state);
-    return result;
   }
 
   // ---------------------------------------------------------------------
@@ -582,7 +752,6 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
   // ---------------------------------------------------------------------
 
   async getDashboardState(): Promise<DashboardState> {
-    await this.ensureAlarm();
     const state = await this.load();
     const forecast = buildForecast(this.forecastInput(state));
 
@@ -608,7 +777,9 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
       forecast,
       departments: state.departments,
       invoices: state.invoices,
-      activity: [...state.activity].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      // Insertion order already encodes causality; several entries share a
+      // millisecond, and sorting on the timestamp alone reorders them.
+      activity: [...state.activity].reverse(),
       decisions: views.reverse(),
       escalations,
       emails: [...state.emails].reverse(),

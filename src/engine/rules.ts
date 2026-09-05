@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CFO rule evaluation.
  *
  * Each rule is a pure predicate that returns a pass/fail plus the human
@@ -13,6 +13,7 @@
 
 import type {
   CategoryStat,
+  Rupees,
   CfoRules,
   Department,
   Forecast,
@@ -33,6 +34,25 @@ export interface RuleContext {
   forecastBefore: Forecast;
   /** Forecast with this request hypothetically reserved. */
   forecastAfter: Forecast;
+  /** Autonomous spend already committed inside the rolling window. */
+  priorCommitments: PriorCommitments;
+}
+
+/**
+ * What the agent has already authorised recently. Without this, authority is
+ * evaluated one request at a time and a ceiling is trivially evaded.
+ */
+export interface PriorCommitments {
+  /** Approved autonomous spend for this department inside the window. */
+  departmentWindowTotal: Rupees;
+  /** Approved autonomous spend for this department AND vendor pair. */
+  vendorWindowTotal: Rupees;
+  windowDays: number;
+}
+
+/** No prior autonomous activity — the correct baseline for a fresh ledger. */
+export function noPriorCommitments(windowDays: number): PriorCommitments {
+  return { departmentWindowTotal: 0, vendorWindowTotal: 0, windowDays };
 }
 
 function pct(fraction: number): string {
@@ -160,10 +180,64 @@ export function ruleAnomaly(ctx: RuleContext): RuleEvaluation {
   };
 }
 
+/**
+ * Aggregate authority — the rule that makes the per-request ceiling mean
+ * something.
+ *
+ * A limit checked one request at a time is not a limit. Three requests of ₹4L
+ * evade a ₹5L ceiling, and splitting a purchase to stay under a threshold is
+ * the oldest way there is to defeat an approval workflow. Two tests here:
+ *
+ *   1. Total autonomous commitments per department within the rolling window
+ *      must stay inside the pool the CFO delegated.
+ *   2. Repeated spend to the SAME vendor from the same department inside the
+ *      window is summed against the per-request ceiling — which is exactly the
+ *      shape a split purchase takes.
+ */
+export function ruleAggregateAuthority(ctx: RuleContext): RuleEvaluation {
+  const { rules, request, department } = ctx;
+  const { departmentWindowTotal, vendorWindowTotal, windowDays } = ctx.priorCommitments;
+
+  const departmentTotal = departmentWindowTotal + request.amount;
+  const vendorTotal = vendorWindowTotal + request.amount;
+
+  const poolExceeded = departmentTotal > rules.rollingAuthorityPool;
+  const splitDetected = vendorWindowTotal > 0 && vendorTotal > rules.maxAutonomousAmount;
+
+  if (poolExceeded) {
+    return {
+      rule: "aggregate_authority",
+      passed: false,
+      severity: "soft",
+      detail: `${department.name} would reach ${formatINR(departmentTotal)} of autonomous spend in the last ${windowDays} days, past the ${formatINR(rules.rollingAuthorityPool)} pool delegated to me. Over by ${formatINR(departmentTotal - rules.rollingAuthorityPool)}.`,
+    };
+  }
+
+  if (splitDetected) {
+    return {
+      rule: "aggregate_authority",
+      passed: false,
+      severity: "soft",
+      detail: `${formatINR(vendorWindowTotal)} has already gone to ${ctx.vendor.name} from ${department.name} in the last ${windowDays} days. With this request that is ${formatINR(vendorTotal)}, above the ${formatINR(rules.maxAutonomousAmount)} single-request ceiling — the shape of a split purchase, so I am not treating the parts separately.`,
+    };
+  }
+
+  return {
+    rule: "aggregate_authority",
+    passed: true,
+    severity: "soft",
+    detail:
+      departmentWindowTotal > 0
+        ? `${formatINR(departmentTotal)} of autonomous spend for ${department.name} in the last ${windowDays} days, within the ${formatINR(rules.rollingAuthorityPool)} pool.`
+        : `First autonomous commitment for ${department.name} in the last ${windowDays} days.`,
+  };
+}
+
 /** Evaluate every rule. Order here is presentation order, not precedence. */
 export function evaluateRules(ctx: RuleContext): RuleEvaluation[] {
   return [
     ruleMaxAutonomousAmount(ctx),
+    ruleAggregateAuthority(ctx),
     ruleBudgetOverage(ctx),
     ruleRequireVendorHistory(ctx),
     ruleHeadroom(ctx),
@@ -175,6 +249,7 @@ export function evaluateRules(ctx: RuleContext): RuleEvaluation[] {
 /** Human-readable label for each rule, for the audit trail UI. */
 export const RULE_LABELS: Record<RuleEvaluation["rule"], string> = {
   max_autonomous_amount: "Delegated authority limit",
+  aggregate_authority: "Aggregate authority",
   budget_overage: "Department budget",
   require_vendor_history: "Vendor history",
   headroom_check: "Available headroom",
@@ -190,5 +265,6 @@ export function describeRules(rules: CfoRules): Array<{ label: string; value: st
     { label: "Budget overage allowed", value: pct(rules.maxBudgetOverage) },
     { label: "New vendors need a human", value: rules.requireVendorHistory ? "Yes" : "No" },
     { label: "Anomaly flag threshold", value: `${rules.anomalyMultiplier}× category average` },
+    { label: "Rolling authority pool", value: `${formatINR(rules.rollingAuthorityPool)} / ${rules.rollingWindowDays} days` },
   ];
 }

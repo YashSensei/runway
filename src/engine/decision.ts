@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The decision engine.
  *
  * This is the product. Given a request and the current financial state it
@@ -25,7 +25,7 @@ import type {
 } from "../types";
 import { formatINR } from "../money";
 import { buildForecast, forecastWithHypothetical, type ForecastInput } from "./forecast";
-import { evaluateRules, type RuleContext } from "./rules";
+import { evaluateRules, type PriorCommitments, type RuleContext } from "./rules";
 
 export interface DecideInput {
   request: SpendRequest;
@@ -35,6 +35,8 @@ export interface DecideInput {
   rules: CfoRules;
   /** Everything needed to recompute the forecast, before this request. */
   forecastInput: ForecastInput;
+  /** Autonomous spend already committed inside the rolling window. */
+  priorCommitments: PriorCommitments;
   /** Precomputed current forecast. Recomputed if omitted. */
   forecastBefore?: Forecast;
   now: ISODateTime;
@@ -76,7 +78,7 @@ export function resolveOutcome(evaluations: RuleEvaluation[]): {
   if (hardViolation) {
     return { outcome: "REJECTED", reasonCode: "hard_rule_violation" };
   }
-  if (failed("max_autonomous_amount")) {
+  if (failed("max_autonomous_amount") || failed("aggregate_authority")) {
     return { outcome: "ESCALATED", reasonCode: "exceeds_authority" };
   }
   if (failed("headroom_check") || failed("min_cash_threshold")) {
@@ -119,13 +121,20 @@ export function buildFallbackNarration(args: {
   }
 
   if (reasonCode === "exceeds_authority") {
+    if (!evaluations.find((e) => e.rule === "aggregate_authority")?.passed) {
+      return `Escalating ${amount} for ${dept}. ${detailFor(evaluations, "aggregate_authority")} Each request on its own is inside the ceiling you set; together they are not, and I am not going to let a limit be evaded by splitting the invoice.`;
+    }
     return `Escalating ${amount} for ${dept}. ${detailFor(evaluations, "max_autonomous_amount")} This is above the authority you delegated to me, so it is your call regardless of the merits. For what it is worth: ${detailFor(evaluations, "budget_overage")}`;
   }
 
   if (reasonCode === "insufficient_headroom") {
-    const clean =
-      evaluations.filter((e) => !e.passed).length === 1 &&
-      !evaluations.find((e) => e.rule === "min_cash_threshold")?.passed === false;
+    // "Nothing is wrong with this request in itself" is the most persuasive
+    // sentence the agent says, so it must be exactly true: every rule about
+    // the REQUEST passes, and only the rules about available CASH fail. Note
+    // the two cash rules usually fail together, so counting failures is not
+    // the same test.
+    const cashRules = new Set(["headroom_check", "min_cash_threshold"]);
+    const clean = evaluations.every((e) => e.passed || cashRules.has(e.rule));
     const preamble = clean
       ? `Escalating ${amount} for ${dept}. Nothing is wrong with this request in itself — it is within authority, within budget, and consistent with what ${dept} normally spends.`
       : `Escalating ${amount} for ${dept}.`;
@@ -192,6 +201,7 @@ export function decide(input: DecideInput): DecisionResult {
     rules: input.rules,
     forecastBefore,
     forecastAfter,
+    priorCommitments: input.priorCommitments,
   };
 
   const evaluations = evaluateRules(ctx);

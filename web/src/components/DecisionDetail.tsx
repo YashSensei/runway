@@ -140,7 +140,7 @@ function StateCell({
       <div className="state-delta">
         {delta === 0
           ? "no change"
-          : `${delta > 0 ? "+" : "−"}${rupees(Math.abs(delta))}`}
+          : `${delta > 0 ? "+" : "-"}${rupees(Math.abs(delta))}`}
       </div>
     </div>
   );

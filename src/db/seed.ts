@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Demo fixture: Vertex Labs, a mid-stage Indian SaaS company.
  *
  * These numbers are hand-tuned so the demo narrative lands on real arithmetic
@@ -44,6 +44,11 @@ export const COMPANY: Company = {
     maxBudgetOverage: 0.1,
     requireVendorHistory: true,
     anomalyMultiplier: 2,
+    // A per-request ceiling alone is not a ceiling. This caps what the agent
+    // may commit per department across the window, so three ₹4L requests
+    // cannot do what one ₹12L request is refused.
+    rollingAuthorityPool: L(10),
+    rollingWindowDays: 30,
   },
 };
 

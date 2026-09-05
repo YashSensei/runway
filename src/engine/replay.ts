@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Counterfactual replay — the proof layer.
  *
  * Re-decides the company's real historical requests with the same engine that
@@ -27,6 +27,7 @@ import {
   ruleBudgetOverage,
   ruleMaxAutonomousAmount,
   ruleRequireVendorHistory,
+  noPriorCommitments,
   type RuleContext,
 } from "./rules";
 import { resolveOutcome } from "./decision";
@@ -51,6 +52,7 @@ function neutralForecast(rules: CfoRules): Forecast {
     projectedMinimumWeek: 0,
     breachWeek: null,
     breachGap: 0,
+    breachWeekShortfall: 0,
     endingCash: generous,
     headroom: generous - rules.minCashThreshold,
   };
@@ -94,6 +96,9 @@ export function runReplay(input: ReplayInput): ReplayResult {
       rules: input.rules,
       forecastBefore: forecast,
       forecastAfter: forecast,
+      // Rolling-window aggregation is not reconstructable from the historical
+      // fixture either, so it is held neutral alongside the cash rules.
+      priorCommitments: noPriorCommitments(input.rules.rollingWindowDays),
     };
 
     // Cash rules are omitted rather than faked — see the note at the top.

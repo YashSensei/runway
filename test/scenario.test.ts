@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The demo, as executable specification.
  *
  * Every figure quoted in the pitch is asserted here. If someone changes the
@@ -10,6 +10,7 @@ import { describe, it, expect } from "vitest";
 import { buildForecast, type ForecastInput } from "../src/engine/forecast";
 import { buildCollectionPlan, recordCommitment } from "../src/engine/collections";
 import { decide } from "../src/engine/decision";
+import { noPriorCommitments } from "../src/engine/rules";
 import { baseSeed, applyShock, DEMO_REQUESTS, TODAY } from "../src/db/seed";
 import type { Forecast, LedgerState, SpendRequest } from "../src/types";
 
@@ -35,6 +36,18 @@ function requestFrom(key: keyof typeof DEMO_REQUESTS, id: string): SpendRequest 
   return { ...DEMO_REQUESTS[key]!, id, status: "pending", createdAt: "2026-09-07T10:00:00.000Z" };
 }
 
+/** Mirrors the Durable Object''s rolling-window aggregation. */
+function priorCommitmentsFor(state: LedgerState, request: SpendRequest) {
+  const base = noPriorCommitments(state.company.rules.rollingWindowDays);
+  for (const prior of state.requests) {
+    if (prior.status !== "approved") continue;
+    if (prior.departmentId !== request.departmentId) continue;
+    base.departmentWindowTotal += prior.amount;
+    if (prior.vendorId === request.vendorId) base.vendorWindowTotal += prior.amount;
+  }
+  return base;
+}
+
 /** Submit a request and, if approved, commit its reservation to the state. */
 function submit(state: LedgerState, key: keyof typeof DEMO_REQUESTS, id: string) {
   const request = requestFrom(key, id);
@@ -52,13 +65,38 @@ function submit(state: LedgerState, key: keyof typeof DEMO_REQUESTS, id: string)
     categoryStat,
     rules: state.company.rules,
     forecastInput: forecastInput(state),
+    priorCommitments: priorCommitmentsFor(state, request),
     now: "2026-09-07T10:00:00.000Z",
     newId: () => `${id}-${counter++}`,
   });
 
-  const next: LedgerState = result.reservation
-    ? { ...state, reservations: [...state.reservations, result.reservation] }
-    : state;
+  // Mirror what the Durable Object commits: the request itself, the
+  // reservation, and the budget consumption. Without recording the request the
+  // rolling-authority window would always look empty.
+  const committed: SpendRequest = {
+    ...request,
+    status:
+      result.decision.outcome === "APPROVED"
+        ? "approved"
+        : result.decision.outcome === "REJECTED"
+          ? "rejected"
+          : "escalated",
+  };
+
+  const next: LedgerState = {
+    ...state,
+    requests: [...state.requests, committed],
+    reservations: result.reservation
+      ? [...state.reservations, result.reservation]
+      : state.reservations,
+    departments: result.reservation
+      ? state.departments.map((d) =>
+          d.id === request.departmentId
+            ? { ...d, periodSpend: d.periodSpend + request.amount }
+            : d,
+        )
+      : state.departments,
+  };
 
   return { result, state: next };
 }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Worker entry point.
  *
  * Thin by design: it routes, and everything that touches money is delegated to
@@ -39,6 +39,26 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+/** Sentinel for a body that could not be parsed, distinct from an absent body. */
+const INVALID = Symbol("invalid-json");
+
+/**
+ * Parse a request body without throwing.
+ *
+ * `c.req.json()` rejects on malformed input, and with no error handler Hono
+ * turned that into a bare 500. A client sending bad JSON deserves a 400 and a
+ * reason, not an opaque server error.
+ */
+async function readJson(request: Request): Promise<unknown | typeof INVALID> {
+  const text = await request.text().catch(() => null);
+  if (text === null || text.trim() === "") return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return INVALID;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Read model
 // ---------------------------------------------------------------------------
@@ -54,25 +74,19 @@ app.get("/api/health", (c) => c.json({ ok: true, service: "runway" }));
 // ---------------------------------------------------------------------------
 
 app.post("/api/requests", async (c) => {
-  const body = await c.req.json<{
-    idempotencyKey: string;
-    departmentId: string;
-    vendorId: string;
-    amount: number;
-    category: string;
-    description: string;
-    requestedBy: string;
-    expectedWeek: number;
-  }>();
-  return json(await agent(c.env).submitRequest(body));
+  const body = await readJson(c.req.raw);
+  if (body === INVALID) return json({ error: "Body must be valid JSON" }, 400);
+  const result = await agent(c.env).submitRequest(body as never);
+  return "error" in result ? json(result, 400) : json(result);
 });
 
 app.post("/api/escalations/:requestId/:action", async (c) => {
   const action = c.req.param("action");
   if (action !== "approve" && action !== "reject" && action !== "defer") {
-    return c.json({ error: "action must be approve, reject or defer" }, 400);
+    return json({ error: "action must be approve, reject or defer" }, 400);
   }
-  return json(await agent(c.env).resolveEscalation(c.req.param("requestId"), action));
+  const result = await agent(c.env).resolveEscalation(c.req.param("requestId"), action);
+  return result.ok ? json(result) : json(result, 409);
 });
 
 // ---------------------------------------------------------------------------
@@ -88,8 +102,8 @@ app.post("/api/demo/reset", async (c) => {
 });
 
 app.post("/api/demo/shock", async (c) => {
-  await agent(c.env).applyShockScenario();
-  return c.json({ ok: true, scene: "shock" });
+  const result = await agent(c.env).applyShockScenario();
+  return json({ scene: "shock", ...result });
 });
 
 app.post("/api/demo/run-agent", async (c) => {
@@ -97,12 +111,15 @@ app.post("/api/demo/run-agent", async (c) => {
 });
 
 app.post("/api/demo/inject-reply", async (c) => {
-  const body = await c.req.json<{ invoiceId?: string; amount?: number; date?: string }>().catch(() => ({}));
-  return json(await agent(c.env).injectReply(body));
+  const body = await readJson(c.req.raw);
+  if (body === INVALID) return json({ error: "Body must be valid JSON" }, 400);
+  const result = await agent(c.env).injectReply((body ?? {}) as never);
+  return result.ok ? json(result) : json(result, 409);
 });
 
 app.post("/api/demo/request/:key", async (c) => {
-  return json(await agent(c.env).submitDemoRequest(c.req.param("key")));
+  const result = (await agent(c.env).submitDemoRequest(c.req.param("key"))) as Record<string, unknown>;
+  return "error" in result ? json(result, 400) : json(result);
 });
 
 app.post("/api/demo/replay", async (c) => {

@@ -149,17 +149,29 @@ export function buildForecast(input: ForecastInput): Forecast {
   }
 
   // --- Summarise -----------------------------------------------------------
-  let projectedMinimum = company.currentCash;
-  let projectedMinimumWeek = 0;
+  const firstWeek = weeks[0];
+  let projectedMinimum = firstWeek ? firstWeek.closingCash : company.currentCash;
+  let projectedMinimumWeek = firstWeek ? firstWeek.week : 0;
   let breachWeek: number | null = null;
+  let breachWeekShortfall = 0;
 
   for (const week of weeks) {
+    // A non-finite balance means bad data reached the engine. Failing loudly
+    // is mandatory here: every comparison against NaN is false, so a silent
+    // pass would leave the trough un-updated and report the company healthy
+    // with headroom to spend. Reporting "safe" is the worst possible failure.
+    if (!Number.isFinite(week.closingCash)) {
+      throw new Error(
+        `Forecast produced a non-finite balance in week ${week.week}; refusing to report a cash position.`,
+      );
+    }
     if (week.closingCash < projectedMinimum) {
       projectedMinimum = week.closingCash;
       projectedMinimumWeek = week.week;
     }
     if (breachWeek === null && week.belowThreshold) {
       breachWeek = week.week;
+      breachWeekShortfall = threshold - week.closingCash;
     }
   }
 
@@ -173,6 +185,7 @@ export function buildForecast(input: ForecastInput): Forecast {
     projectedMinimumWeek,
     breachWeek,
     breachGap: Math.max(0, threshold - projectedMinimum),
+    breachWeekShortfall: Math.max(0, breachWeekShortfall),
     endingCash: lastWeek ? lastWeek.closingCash : company.currentCash,
     // Headroom is simply how far the trough sits above the safety line.
     // Reservations are already folded in above as outflows, so subtracting

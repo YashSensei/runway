@@ -6,11 +6,10 @@ interface Props {
   onClose: () => void;
   children: ReactNode;
   headerExtra?: ReactNode;
-  width?: number;
 }
 
 /** Overlay shell: Escape closes, backdrop click closes, content never bubbles. */
-export function Modal({ title, onClose, children, headerExtra, width }: Props) {
+export function Modal({ title, onClose, children, headerExtra }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -26,7 +25,6 @@ export function Modal({ title, onClose, children, headerExtra, width }: Props) {
     <div className="overlay" onClick={onClose} role="presentation">
       <div
         className="modal"
-        style={width ? { maxWidth: width } : undefined}
         role="dialog"
         aria-modal="true"
         aria-label={title}

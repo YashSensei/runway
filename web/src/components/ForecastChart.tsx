@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import type { TooltipProps } from "recharts";
 import type { Forecast, ForecastWeek } from "@shared/types";
-import { lakh, lakhSigned, rupees, shortDate, toLakhs } from "../format";
+import { lakh, lakhSigned, rupees, shortDate, toLakhs, weekLabel } from "../format";
 
 interface ChartRow {
   week: number;
@@ -24,12 +24,28 @@ interface DotRenderProps {
   cx?: number;
   cy?: number;
   payload?: ChartRow;
+  /** recharts supplies this; dropping it produces a key warning per dot. */
+  key?: string | number;
 }
 
 const OK = "#38b48b";
 const DANGER = "#d9494f";
-const AXIS = "#626f80";
+const AXIS = "#8794a6";
 const GRID = "#161d27";
+
+/**
+ * The plot rectangle is pinned rather than measured so the gradients can use
+ * `userSpaceOnUse`: object-bounding-box units resolve against each painted
+ * path's own bbox, which is *not* the plot, so the colour break landed well
+ * away from the threshold line. These four numbers make it exact.
+ *
+ * CHART_HEIGHT must equal the content box of `.chart-wrap`.
+ */
+const CHART_HEIGHT = 284;
+const MARGIN = { top: 8, right: 20, bottom: 4, left: 4 } as const;
+const X_AXIS_HEIGHT = 30;
+const PLOT_TOP = MARGIN.top;
+const PLOT_BOTTOM = CHART_HEIGHT - MARGIN.bottom - X_AXIS_HEIGHT;
 
 export function ForecastChart({ forecast }: { forecast: Forecast }) {
   const rows: ChartRow[] = forecast.weeks.map((w) => ({
@@ -44,19 +60,22 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
   const lo = Math.min(thresholdL, ...values);
   const hi = Math.max(thresholdL, ...values);
   const pad = Math.max(1.5, (hi - lo) * 0.22);
-  const domainMin = Math.max(0, Math.floor(lo - pad));
+  // No clamp at zero: cash genuinely can go negative under a stress scenario,
+  // and clipping it drew the line straight over the X-axis labels.
+  const domainMin = Math.floor(lo - pad);
   const domainMax = Math.ceil(hi + pad);
 
-  // Where the threshold sits as a 0..1 fraction from the top of the plot.
-  // Both gradients switch colour exactly on that line.
+  // Where the threshold sits as a 0..1 fraction of the plot rectangle. With
+  // userSpaceOnUse this is the same fraction both gradients resolve against,
+  // so the colour changes exactly on the dashed line.
   const span = domainMax - domainMin || 1;
   const cut = clamp01((domainMax - thresholdL) / span);
 
-  const breachRows = rows.filter((r) => r.below);
-  const breachFrom = breachRows[0]?.week;
-  const breachTo = breachRows[breachRows.length - 1]?.week;
-
+  const hasBreach = rows.some((r) => r.below);
+  const firstWeek = rows[0]?.week ?? 1;
   const lastWeek = rows[rows.length - 1]?.week ?? 13;
+  const breachRuns = contiguousRuns(rows);
+  const showZeroLine = domainMin < 0 && domainMax > 0;
 
   return (
     <section className="panel">
@@ -69,54 +88,79 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
           <span style={{ color: DANGER }}>
             <i className="swatch" /> below floor
           </span>
-          <span style={{ color: AXIS }}>
-            <i className="swatch-sq" /> threshold {lakh(forecast.threshold)}
-          </span>
         </div>
         <span className="panel-note">
-          min {lakh(forecast.projectedMinimum)} · week{" "}
-          {forecast.projectedMinimumWeek}
+          min {lakh(forecast.projectedMinimum)} ·{" "}
+          {weekLabel(forecast.projectedMinimumWeek)}
         </span>
       </div>
 
       <div className="chart-wrap">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={rows} margin={{ top: 8, right: 20, bottom: 4, left: 4 }}>
+        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
+          <AreaChart data={rows} margin={{ ...MARGIN }}>
             <defs>
-              <linearGradient id="rw-stroke" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient
+                id="rw-stroke"
+                gradientUnits="userSpaceOnUse"
+                x1={0}
+                y1={PLOT_TOP}
+                x2={0}
+                y2={PLOT_BOTTOM}
+              >
                 <stop offset={cut} stopColor={OK} />
                 <stop offset={cut} stopColor={DANGER} />
               </linearGradient>
-              <linearGradient id="rw-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset={0} stopColor={OK} stopOpacity={0.3} />
-                <stop offset={cut} stopColor={OK} stopOpacity={0.03} />
-                <stop offset={cut} stopColor={DANGER} stopOpacity={0.06} />
-                <stop offset={1} stopColor={DANGER} stopOpacity={0.3} />
+              <linearGradient
+                id="rw-fill"
+                gradientUnits="userSpaceOnUse"
+                x1={0}
+                y1={PLOT_TOP}
+                x2={0}
+                y2={PLOT_BOTTOM}
+              >
+                {hasBreach ? (
+                  <>
+                    <stop offset={0} stopColor={OK} stopOpacity={0.3} />
+                    <stop offset={cut} stopColor={OK} stopOpacity={0.03} />
+                    <stop offset={cut} stopColor={DANGER} stopOpacity={0.06} />
+                    <stop offset={1} stopColor={DANGER} stopOpacity={0.3} />
+                  </>
+                ) : (
+                  // Nothing breaches: no part of this chart may read as red.
+                  <>
+                    <stop offset={0} stopColor={OK} stopOpacity={0.3} />
+                    <stop offset={1} stopColor={OK} stopOpacity={0.02} />
+                  </>
+                )}
               </linearGradient>
             </defs>
 
             <CartesianGrid stroke={GRID} vertical={false} />
 
-            {breachFrom !== undefined && breachTo !== undefined ? (
+            {/* One band per contiguous run, so a recovery week is never
+                painted as if it had breached. */}
+            {breachRuns.map((run) => (
               <ReferenceArea
-                x1={breachFrom - 0.5}
-                x2={breachTo + 0.5}
+                key={`breach-${run.from}-${run.to}`}
+                x1={Math.max(firstWeek, run.from - 0.5)}
+                x2={Math.min(lastWeek, run.to + 0.5)}
                 fill={DANGER}
                 fillOpacity={0.07}
                 stroke={DANGER}
                 strokeOpacity={0.22}
                 strokeDasharray="2 3"
-                ifOverflow="extendDomain"
+                ifOverflow="hidden"
               />
-            ) : null}
+            ))}
 
             <XAxis
               dataKey="week"
               type="number"
-              domain={[1, lastWeek]}
+              domain={[firstWeek, lastWeek]}
+              height={X_AXIS_HEIGHT}
               ticks={rows.map((r) => r.week)}
               tickFormatter={(v: number) => `W${v}`}
-              tick={{ fill: AXIS, fontSize: 11, fontFamily: "ui-monospace, monospace" }}
+              tick={{ fill: AXIS, fontSize: 12, fontFamily: "ui-monospace, monospace" }}
               axisLine={{ stroke: "#222c38" }}
               tickLine={false}
               tickMargin={8}
@@ -125,21 +169,40 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
               domain={[domainMin, domainMax]}
               width={54}
               tickFormatter={(v: number) => `${v}L`}
-              tick={{ fill: AXIS, fontSize: 11, fontFamily: "ui-monospace, monospace" }}
+              tick={{ fill: AXIS, fontSize: 12, fontFamily: "ui-monospace, monospace" }}
               axisLine={false}
               tickLine={false}
             />
+
+            {showZeroLine ? (
+              <ReferenceLine
+                y={0}
+                stroke="#5c6a7c"
+                strokeWidth={1.4}
+                ifOverflow="hidden"
+                label={{
+                  value: "ZERO",
+                  position: "insideBottomRight",
+                  fill: "#8794a6",
+                  fontSize: 12,
+                  fontFamily: "ui-monospace, monospace",
+                  letterSpacing: 1.2,
+                  dy: -4,
+                }}
+              />
+            ) : null}
 
             <ReferenceLine
               y={thresholdL}
               stroke={DANGER}
               strokeDasharray="5 4"
               strokeOpacity={0.85}
+              ifOverflow="hidden"
               label={{
                 value: `SAFETY THRESHOLD ${lakh(forecast.threshold)}`,
                 position: "insideTopRight",
                 fill: DANGER,
-                fontSize: 10.5,
+                fontSize: 13,
                 fontFamily: "ui-monospace, monospace",
                 letterSpacing: 1.4,
                 dy: -6,
@@ -170,14 +233,35 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
   );
 }
 
+/** Maximal runs of consecutive breaching weeks, in order. */
+function contiguousRuns(rows: ChartRow[]): Array<{ from: number; to: number }> {
+  const runs: Array<{ from: number; to: number }> = [];
+  let from: number | null = null;
+  let to = 0;
+
+  for (const row of rows) {
+    if (row.below) {
+      if (from === null) from = row.week;
+      to = row.week;
+    } else if (from !== null) {
+      runs.push({ from, to });
+      from = null;
+    }
+  }
+  if (from !== null) runs.push({ from, to });
+
+  return runs;
+}
+
 function renderDot(props: DotRenderProps) {
-  const { cx, cy, payload } = props;
+  const { cx, cy, payload, key } = props;
   if (cx === undefined || cy === undefined || payload === undefined) {
-    return <circle r={0} cx={0} cy={0} />;
+    return <circle key={key} r={0} cx={0} cy={0} />;
   }
   const below = payload.below;
   return (
     <circle
+      key={key}
       cx={cx}
       cy={cy}
       r={below ? 4 : 2.6}

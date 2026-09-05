@@ -96,17 +96,32 @@ export function percent(ratio: number, digits = 0): string {
   return `${(ratio * 100).toFixed(digits)}%`;
 }
 
+/**
+ * A forecast week index of 0 means "no week yet" (the engine seeds
+ * `projectedMinimumWeek` to 0 before the first fold). Never print "week 0".
+ */
+export function weekLabel(week: number, capitalised = false): string {
+  if (!Number.isFinite(week) || week <= 0) return capitalised ? "Today" : "today";
+  return `${capitalised ? "Week" : "week"} ${week}`;
+}
+
+/** True when the week index refers to a real forecast week. */
+export function hasWeek(week: number): boolean {
+  return Number.isFinite(week) && week > 0;
+}
+
 const RULE_LABELS: Record<string, string> = {
-  max_autonomous_amount: "max_autonomous_amount",
-  min_cash_threshold: "min_cash_threshold",
-  budget_overage: "budget_overage",
-  require_vendor_history: "require_vendor_history",
-  anomaly_multiplier: "anomaly_multiplier",
-  headroom_check: "headroom_check",
+  max_autonomous_amount: "Delegated authority limit",
+  min_cash_threshold: "Cash safety threshold",
+  budget_overage: "Department budget",
+  require_vendor_history: "Vendor history",
+  anomaly_multiplier: "Spend pattern",
+  headroom_check: "Available headroom",
+  aggregate_authority: "Aggregate authority",
 };
 
 export function ruleLabel(rule: string): string {
-  return RULE_LABELS[rule] ?? rule;
+  return RULE_LABELS[rule] ?? rule.replace(/_/g, " ");
 }
 
 const ACTIVITY_LABELS: Record<string, string> = {

@@ -8,6 +8,12 @@ interface Props {
   onReject?: (view: EscalationView) => void;
   onDefer?: (view: EscalationView) => void;
   onAskWhy?: (view: EscalationView) => void;
+  /**
+   * A decision for this request is in flight (or already recorded and waiting
+   * for the next poll). Every control locks out so a second click cannot
+   * reserve the money twice.
+   */
+  pending?: boolean;
 }
 
 export function EscalationCard({
@@ -16,6 +22,7 @@ export function EscalationCard({
   onReject,
   onDefer,
   onAskWhy,
+  pending = false,
 }: Props) {
   const { request, decision, departmentName, vendorName } = escalation;
   const text = decision.narration ?? decision.fallbackNarration;
@@ -62,38 +69,38 @@ export function EscalationCard({
           </span>
         </div>
 
-        <div className="esc-actions">
+        <div className="esc-actions" aria-busy={pending}>
           <button
             type="button"
-            className="btn btn-approve"
-            disabled={!onApprove}
+            className={`btn btn-approve${pending ? " btn-pending" : ""}`}
+            disabled={pending || !onApprove}
             onClick={() => onApprove?.(escalation)}
           >
-            Approve
+            {pending ? "Recording…" : "Approve"}
           </button>
           <button
             type="button"
-            className="btn btn-reject"
-            disabled={!onReject}
+            className={`btn btn-reject${pending ? " btn-pending" : ""}`}
+            disabled={pending || !onReject}
             onClick={() => onReject?.(escalation)}
           >
-            Reject
+            {pending ? "Recording…" : "Reject"}
           </button>
           <button
             type="button"
-            className="btn"
-            disabled={!onDefer}
+            className={`btn${pending ? " btn-pending" : ""}`}
+            disabled={pending || !onDefer}
             onClick={() => onDefer?.(escalation)}
           >
-            Defer
+            {pending ? "Recording…" : "Defer"}
           </button>
           <button
             type="button"
-            className="btn btn-why"
-            disabled={!onAskWhy}
+            className={`btn btn-why${pending ? " btn-pending" : ""}`}
+            disabled={pending || !onAskWhy}
             onClick={() => onAskWhy?.(escalation)}
           >
-            Ask why
+            {pending ? "Recording…" : "Ask why"}
           </button>
         </div>
       </div>

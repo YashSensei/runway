@@ -1,23 +1,42 @@
-import type { DashboardState } from "@shared/types";
-import { lakh, rupees, shortDate } from "../format";
+import type { ReactNode } from "react";
+import type {
+  DashboardState,
+  Forecast,
+  ForecastWeek,
+  Rupees,
+} from "@shared/types";
+import { hasWeek, lakh, rupees, shortDate, weekLabel } from "../format";
 
 type Tone = "ok" | "warn" | "danger" | "neutral";
 
 export function StatHeader({ state }: { state: DashboardState }) {
   const { company, forecast, reservedTotal } = state;
 
-  const minWeek = forecast.weeks.find(
-    (w) => w.week === forecast.projectedMinimumWeek,
-  );
+  // The trough. `projectedMinimumWeek` is 0 until the first fold, in which
+  // case there is no week to name.
+  const troughWeek = forecast.projectedMinimumWeek;
+  const trough = hasWeek(troughWeek)
+    ? forecast.weeks.find((w) => w.week === troughWeek)
+    : undefined;
+
+  // The FIRST week under the floor. A different week from the trough, with a
+  // different (smaller) shortfall — conflating the two misstates the figure.
+  const breachWeekNo = forecast.breachWeek;
+  const breachWeek =
+    breachWeekNo !== null
+      ? forecast.weeks.find((w) => w.week === breachWeekNo)
+      : undefined;
+  const shortfall = breachWeekShortfall(forecast, breachWeek);
+  const troughIsBreachWeek = breachWeekNo !== null && troughWeek === breachWeekNo;
 
   const headroomTone = toneForHeadroom(forecast.headroom, forecast.threshold);
   const minTone: Tone =
     forecast.projectedMinimum < forecast.threshold ? "danger" : "ok";
 
-  const breachWeek =
-    forecast.breachWeek !== null
-      ? forecast.weeks.find((w) => w.week === forecast.breachWeek)
-      : undefined;
+  // "Available headroom: −₹5.6L" is incoherent. Below zero it is a deficit,
+  // named as one, in absolute terms, with a word as well as a colour.
+  const deficit = forecast.headroom < 0;
+  const headroomAbs = Math.abs(forecast.headroom);
 
   return (
     <>
@@ -35,9 +54,11 @@ export function StatHeader({ state }: { state: DashboardState }) {
           exact={rupees(forecast.projectedMinimum)}
           tone={minTone}
           foot={
-            minWeek
-              ? `Week ${forecast.projectedMinimumWeek} · ${shortDate(minWeek.startDate)}`
-              : `Week ${forecast.projectedMinimumWeek}`
+            trough
+              ? `${weekLabel(troughWeek, true)} · ${shortDate(trough.startDate)}`
+              : hasWeek(troughWeek)
+                ? weekLabel(troughWeek, true)
+                : "Lowest point across the horizon"
           }
         />
         <Stat
@@ -48,17 +69,34 @@ export function StatHeader({ state }: { state: DashboardState }) {
           foot="Floor set by CFO policy · never breached knowingly"
         />
         <Stat
-          label="Available Headroom"
-          value={lakh(forecast.headroom)}
-          exact={rupees(forecast.headroom)}
+          label={deficit ? "Headroom Deficit" : "Available Headroom"}
+          value={
+            deficit ? (
+              <>
+                {lakh(headroomAbs)}
+                <span className="stat-suffix">short</span>
+              </>
+            ) : (
+              lakh(forecast.headroom)
+            )
+          }
+          exact={
+            deficit
+              ? `${rupees(headroomAbs)} below the floor`
+              : rupees(forecast.headroom)
+          }
           tone={headroomTone}
-          foot={`${rupees(reservedTotal)} reserved · ceiling ${lakh(
-            company.rules.maxAutonomousAmount,
-          )} per request`}
+          foot={
+            deficit
+              ? `No autonomous spend authority · ${rupees(reservedTotal)} already reserved`
+              : `${rupees(reservedTotal)} reserved · ceiling ${lakh(
+                  company.rules.maxAutonomousAmount,
+                )} per request`
+          }
         />
       </div>
 
-      {forecast.breachWeek !== null ? (
+      {breachWeekNo !== null ? (
         <div className="breach" role="alert">
           <span className="breach-icon">
             <WarningIcon />
@@ -66,17 +104,39 @@ export function StatHeader({ state }: { state: DashboardState }) {
           <span className="breach-title">Projected Breach</span>
           <span className="breach-rule" />
           <span className="breach-body">
-            Week <span className="mono">{forecast.breachWeek}</span>
+            Cash first drops below the floor in{" "}
+            <span className="mono">{weekLabel(breachWeekNo)}</span>
             {breachWeek ? (
               <>
                 {" "}
                 (<span className="mono">{shortDate(breachWeek.startDate)}</span>)
               </>
-            ) : null}{" "}
-            closes at <span className="mono">{lakh(forecast.projectedMinimum)}</span> —{" "}
-            <span className="mono">{lakh(forecast.breachGap)}</span> below the{" "}
-            <span className="mono">{lakh(forecast.threshold)}</span> safety
-            threshold. Autonomous spend authority is suspended.
+            ) : null}
+            , <span className="mono">{lakh(shortfall)}</span> short.{" "}
+            {troughIsBreachWeek ? (
+              <>
+                That is also the worst point, closing at{" "}
+                <span className="mono">{lakh(forecast.projectedMinimum)}</span>{" "}
+                against the{" "}
+                <span className="mono">{lakh(forecast.threshold)}</span> safety
+                threshold.
+              </>
+            ) : (
+              <>
+                Worst point is {weekLabel(troughWeek)}
+                {trough ? (
+                  <>
+                    {" "}
+                    (<span className="mono">{shortDate(trough.startDate)}</span>)
+                  </>
+                ) : null}{" "}
+                at <span className="mono">{lakh(forecast.projectedMinimum)}</span>{" "}
+                — <span className="mono">{lakh(forecast.breachGap)}</span> below
+                the <span className="mono">{lakh(forecast.threshold)}</span>{" "}
+                safety threshold.
+              </>
+            )}{" "}
+            Autonomous spend authority is suspended.
           </span>
         </div>
       ) : (
@@ -84,14 +144,36 @@ export function StatHeader({ state }: { state: DashboardState }) {
           <CheckIcon />
           <span>
             No breach across the {company.forecastHorizonWeeks}-week horizon.
-            Projected minimum {lakh(forecast.projectedMinimum)} in week{" "}
-            {forecast.projectedMinimumWeek}, {lakh(forecast.headroom)} above the
-            floor.
+            Projected minimum {lakh(forecast.projectedMinimum)}
+            {hasWeek(troughWeek) ? ` in ${weekLabel(troughWeek)}` : ""},{" "}
+            {lakh(Math.abs(forecast.headroom))}{" "}
+            {forecast.headroom < 0 ? "below" : "above"} the floor.
           </span>
         </div>
       )}
     </>
   );
+}
+
+/**
+ * How far below the floor the FIRST breaching week closes.
+ *
+ * `Forecast.breachWeekShortfall` is the authoritative field; it is derived
+ * here from the same week's closing balance when the payload predates it, so
+ * the banner can never print `undefined` or silently fall back to the
+ * trough's (larger) `breachGap`.
+ */
+function breachWeekShortfall(
+  forecast: Forecast,
+  breachWeek: ForecastWeek | undefined,
+): Rupees {
+  const declared = (forecast as Forecast & { breachWeekShortfall?: Rupees })
+    .breachWeekShortfall;
+  if (typeof declared === "number" && Number.isFinite(declared)) {
+    return Math.max(0, declared);
+  }
+  if (breachWeek === undefined) return 0;
+  return Math.max(0, forecast.threshold - breachWeek.closingCash);
 }
 
 function Stat({
@@ -102,7 +184,7 @@ function Stat({
   foot,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   exact: string;
   tone: Tone;
   foot: string;
@@ -125,7 +207,7 @@ function toneForHeadroom(headroom: number, threshold: number): Tone {
 
 function WarningIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
       <path
         d="M12 3.6 22 20.4H2L12 3.6Z"
         fill="none"

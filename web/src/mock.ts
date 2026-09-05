@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Development / offline fixture.
  *
  * This is the state the UI renders when `GET /api/state` is unreachable, and
@@ -50,6 +50,8 @@ const company: Company = {
     maxBudgetOverage: 0.1,
     requireVendorHistory: true,
     anomalyMultiplier: 2.5,
+    rollingAuthorityPool: 10_00_000,
+    rollingWindowDays: 30,
   },
 };
 
@@ -171,6 +173,7 @@ function buildForecast(generatedAt: string): Forecast {
     projectedMinimumWeek,
     breachWeek: breach ? breach.week : null,
     breachGap: breach ? Math.max(0, threshold - projectedMinimum) : 0,
+  breachWeekShortfall: breach ? Math.max(0, threshold - breach.closingCash) : 0,
     endingCash: last?.closingCash ?? company.currentCash,
     headroom: projectedMinimum - threshold,
   };
