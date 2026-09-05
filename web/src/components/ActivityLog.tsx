@@ -4,7 +4,8 @@ import type {
   DecisionView,
   SentEmail,
 } from "@shared/types";
-import { activityLabel, clock } from "../format";
+import { activityLabel, clock, plural } from "../format";
+import { Empty, Panel } from "./Panel";
 
 type Tone = "agent" | "ok" | "warn" | "danger" | "neutral";
 
@@ -32,21 +33,27 @@ export function ActivityLog({
   const agentCount = ordered.filter((e) => e.actor === "agent").length;
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <span className="panel-title">Agent Activity</span>
-        <span className="badge badge-agent">
-          <i className="dot dot-pulse" />
-          {agentCount} autonomous
-        </span>
-        <span className="panel-note">{ordered.length} events · newest first</span>
-      </div>
-
-      <div className="log">
-        {ordered.length === 0 ? (
-          <div className="empty">No activity recorded</div>
-        ) : (
-          ordered.map((entry) => {
+    <Panel
+      title="Agent Activity"
+      className="panel-fill"
+      bodyClassName="panel-body-flush"
+      right={
+        <>
+          <span className="badge badge-agent">
+            <i className="dot dot-pulse" />
+            {agentCount} autonomous
+          </span>
+          <span className="panel-note">
+            {plural(ordered.length, "event")} · newest first
+          </span>
+        </>
+      }
+    >
+      {ordered.length === 0 ? (
+        <Empty>No activity recorded yet — the agent logs every action here.</Empty>
+      ) : (
+        <div className="log">
+          {ordered.map((entry) => {
             const link = resolveLink(entry, decisions, emails);
             const tone = toneFor(entry, link);
             const clickable = link !== null;
@@ -73,14 +80,17 @@ export function ActivityLog({
               >
                 <span className="log-time">{clock(entry.createdAt)}</span>
 
-                <span className={`log-icon log-icon-${tone}`}>
+                {/* Type is a chip in its own column — icon plus text — so it
+                    can never run into the summary. */}
+                <span
+                  className={`log-chip log-chip-${tone}`}
+                  title={activityLabel(entry.type)}
+                >
                   <TypeIcon type={entry.type} link={link} />
+                  <span>{chipLabel(entry.type)}</span>
                 </span>
 
-                <span className="log-main">
-                  <span className="log-summary">{entry.summary}</span>
-                  <span className="log-type">{activityLabel(entry.type)}</span>
-                </span>
+                <span className="log-summary">{entry.summary}</span>
 
                 <span className="log-tail">
                   {clickable ? <span className="log-open">OPEN →</span> : null}
@@ -92,11 +102,28 @@ export function ActivityLog({
                 </span>
               </button>
             );
-          })
-        )}
-      </div>
-    </section>
+          })}
+        </div>
+      )}
+    </Panel>
   );
+}
+
+/** Short chip text so the column stays narrow; the full label is the tooltip. */
+const CHIP_LABELS: Partial<Record<ActivityType, string>> = {
+  forecast_updated: "forecast",
+  breach_detected: "breach",
+  breach_cleared: "cleared",
+  email_sent: "email",
+  reply_parsed: "reply",
+  commitment_recorded: "commit",
+  decision: "decision",
+  shock_applied: "shock",
+  system: "system",
+};
+
+function chipLabel(type: ActivityType): string {
+  return CHIP_LABELS[type] ?? activityLabel(type);
 }
 
 // ---------------------------------------------------------------------------

@@ -4,10 +4,9 @@ import type {
   Department,
   Invoice,
   InvoiceStatus,
-  ReplayResult,
 } from "@shared/types";
 import { useDashboardState, resolveEscalation } from "./api";
-import { clock, lakh, percent, rupees, shortDate, stamp } from "./format";
+import { clock, lakh, percent, plural, shortDate, stamp } from "./format";
 import { StatHeader } from "./components/StatHeader";
 import { ForecastChart } from "./components/ForecastChart";
 import { ActivityLog } from "./components/ActivityLog";
@@ -15,9 +14,13 @@ import { EscalationCard } from "./components/EscalationCard";
 import { DecisionDetail } from "./components/DecisionDetail";
 import { EmailPreview } from "./components/EmailPreview";
 import { DemoControls } from "./components/DemoControls";
+import { AuthorityPanel } from "./components/AuthorityPanel";
+import { DecisionsPanel } from "./components/DecisionsPanel";
+import { ReplayPanel } from "./components/ReplayPanel";
+import { Empty, Panel } from "./components/Panel";
 
-/** Rows past this are collapsed into a "+N more" line so nothing runs off a 720p projector. */
-const RAIL_ROW_CAP = 6;
+/** Receivable rows past this collapse into a "+N more" line. */
+const RECEIVABLE_ROW_CAP = 5;
 
 export default function App() {
   const { state, usingMock, loading, lastUpdated, staleSeconds, error } =
@@ -67,8 +70,11 @@ export default function App() {
     );
   }
 
+  const hasEscalations = state.escalations.length > 0;
+
   return (
     <div className="app">
+      {/* Row A — top bar */}
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">RUNWAY</span>
@@ -125,11 +131,20 @@ export default function App() {
         </div>
       ) : null}
 
-      <StatHeader state={state} />
+      <main className="board">
+        {/* Row B — stat cards; Row C — status banner. Both span 12. */}
+        <StatHeader state={state} />
 
-      <div className="grid">
-        <div className="col">
+        {/* Row D — analytic row */}
+        <div className="cell cell-chart">
           <ForecastChart forecast={state.forecast} />
+        </div>
+        <div className="cell cell-authority">
+          <AuthorityPanel state={state} />
+        </div>
+
+        {/* Row E — operational row */}
+        <div className="cell cell-activity">
           <ActivityLog
             entries={state.activity}
             decisions={state.decisions}
@@ -139,33 +154,34 @@ export default function App() {
           />
         </div>
 
-        <div className="col">
-          {actionError !== null ? (
-            <div className="alert-bar alert-bar-danger" role="alert">
-              <span className="alert-bar-title">Not recorded</span>
-              <span>{actionError}</span>
-              <button
-                type="button"
-                className="btn btn-sm btn-ghost alert-bar-dismiss"
-                onClick={() => setActionError(null)}
-              >
-                Dismiss
-              </button>
-            </div>
-          ) : null}
-
+        <div className={`cell cell-review stack${hasEscalations ? " stack-escalating" : ""}`}>
           <EscalationsPanel
             state={state}
             lockedIds={lockedIds}
+            actionError={actionError}
+            onDismissError={() => setActionError(null)}
             onAskWhy={(id) => setDecisionId(id)}
             onResolve={handleResolve}
           />
+          <DecisionsPanel
+            decisions={state.decisions}
+            onOpen={(id) => setDecisionId(id)}
+          />
+        </div>
+
+        <div className="cell cell-ledger stack">
+          <BudgetsPanel
+            departments={state.departments}
+            overage={state.company.rules.maxBudgetOverage}
+          />
           <ReceivablesPanel invoices={state.invoices} />
-          <BudgetsPanel departments={state.departments} />
-          <AuthorityPanel state={state} />
+        </div>
+
+        {/* Row F — replay, full width, below the fold when collapsed */}
+        <div className="cell cell-replay">
           <ReplayPanel replay={state.replay} />
         </div>
-      </div>
+      </main>
 
       {openDecision !== null ? (
         <DecisionDetail view={openDecision} onClose={() => setDecisionId(null)} />
@@ -203,21 +219,28 @@ function BackendDown({ error }: { error: string | null }) {
 function EscalationsPanel({
   state,
   lockedIds,
+  actionError,
+  onDismissError,
   onAskWhy,
   onResolve,
 }: {
   state: DashboardState;
   lockedIds: readonly string[];
+  actionError: string | null;
+  onDismissError: () => void;
   onAskWhy: (decisionId: string) => void;
   onResolve: (requestId: string, action: "approve" | "reject" | "defer") => void;
 }) {
   const { escalations } = state;
+  const empty = escalations.length === 0;
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <span className="panel-title">Escalations</span>
-        {escalations.length > 0 ? (
+    <Panel
+      title="Escalations"
+      className={empty ? "panel-auto" : "panel-fill"}
+      bodyClassName={empty && actionError === null ? "panel-body-flush" : "panel-body-esc"}
+      right={
+        escalations.length > 0 ? (
           <span className="badge badge-danger">
             <i className="dot dot-pulse" />
             {escalations.length} awaiting you
@@ -227,27 +250,39 @@ function EscalationsPanel({
             <i className="dot" />
             clear
           </span>
-        )}
-      </div>
+        )
+      }
+    >
+      {actionError !== null ? (
+        <div className="inline-alert" role="alert">
+          <span className="inline-alert-title">Not recorded</span>
+          <span className="inline-alert-body">{actionError}</span>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            onClick={onDismissError}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
 
-      <div className="panel-body">
-        {escalations.length === 0 ? (
-          <div className="empty">Nothing handed back</div>
-        ) : (
-          escalations.map((esc) => (
-            <EscalationCard
-              key={esc.decision.id}
-              escalation={esc}
-              pending={lockedIds.includes(esc.request.id)}
-              onAskWhy={(v) => onAskWhy(v.decision.id)}
-              onApprove={(v) => onResolve(v.request.id, "approve")}
-              onReject={(v) => onResolve(v.request.id, "reject")}
-              onDefer={(v) => onResolve(v.request.id, "defer")}
-            />
-          ))
-        )}
-      </div>
-    </section>
+      {escalations.length === 0 ? (
+        <Empty>Nothing handed back — the agent is operating within authority.</Empty>
+      ) : (
+        escalations.map((esc) => (
+          <EscalationCard
+            key={esc.decision.id}
+            escalation={esc}
+            pending={lockedIds.includes(esc.request.id)}
+            onAskWhy={(v) => onAskWhy(v.decision.id)}
+            onApprove={(v) => onResolve(v.request.id, "approve")}
+            onReject={(v) => onResolve(v.request.id, "reject")}
+            onDefer={(v) => onResolve(v.request.id, "defer")}
+          />
+        ))
+      )}
+    </Panel>
   );
 }
 
@@ -275,22 +310,26 @@ function ReceivablesPanel({ invoices }: { invoices: Invoice[] }) {
       a.id.localeCompare(b.id),
   );
 
-  const shown = sorted.slice(0, RAIL_ROW_CAP);
+  const shown = sorted.slice(0, RECEIVABLE_ROW_CAP);
   const hidden = sorted.length - shown.length;
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <span className="panel-title">Receivables</span>
+    <Panel
+      title="Receivables"
+      className="panel-fill"
+      bodyClassName="panel-body-flush"
+      right={
         <span className="panel-note">
-          {lakh(expected)} expected · {sorted.length} open
+          <span style={{ color: "var(--text)" }}>{lakh(expected)}</span> expected ·{" "}
+          {sorted.length} open
         </span>
-      </div>
-      <div className="panel-body" style={{ paddingTop: 4, paddingBottom: 6 }}>
-        {shown.length === 0 ? (
-          <div className="empty">Nothing outstanding</div>
-        ) : (
-          shown.map((inv) => {
+      }
+    >
+      {shown.length === 0 ? (
+        <Empty>Nothing outstanding</Empty>
+      ) : (
+        <div className="tbl">
+          {shown.map((inv) => {
             // The invoice is worth `amount`; a commitment is a separate,
             // possibly smaller promise. Showing the commitment as the invoice
             // contradicts the collection email one click away.
@@ -300,240 +339,129 @@ function ReceivablesPanel({ invoices }: { invoices: Invoice[] }) {
                 ? inv.committedAmount
                 : null;
 
+            const statusColor =
+              inv.status === "overdue"
+                ? "var(--danger)"
+                : inv.status === "committed"
+                  ? "var(--ok)"
+                  : "var(--text-2)";
+
             return (
-              <div className="dept-row" key={inv.id}>
-                <div className="dept-line">
-                  <span className="dept-name">
-                    {inv.customer}
-                    {inv.sensitive ? (
-                      <span className="rule-sev" style={{ marginLeft: 8 }}>
-                        sensitive
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="dept-figures" style={{ color: "var(--text)" }}>
-                    {lakh(inv.amount)}
-                  </span>
-                </div>
-                <div
-                  className="dept-line"
-                  style={{ marginTop: 3, alignItems: "center" }}
-                >
-                  <span className="dept-figures">
-                    {inv.id} · due {inv.dueDate} · lag {inv.customerAvgLagDays}d
-                  </span>
-                  <span className="chip-row">
-                    {committed !== null ? (
-                      <span className="chip" style={{ color: "var(--ok)" }}>
-                        committed {lakh(committed)}
-                        {inv.committedDate !== undefined
-                          ? ` · ${shortDate(inv.committedDate)}`
-                          : ""}
-                      </span>
-                    ) : null}
-                    <span
-                      className="chip"
-                      style={{
-                        color:
-                          inv.status === "overdue"
-                            ? "var(--danger)"
-                            : inv.status === "committed"
-                              ? "var(--ok)"
-                              : "var(--text-2)",
-                      }}
-                    >
-                      {inv.chasedAt !== null ? "chased · " : ""}
-                      {inv.status}
+              <div
+                className="tbl-row inv-row"
+                key={inv.id}
+                title={`${inv.id} · issued ${shortDate(inv.issuedDate)} · avg lag ${inv.customerAvgLagDays}d`}
+              >
+                <span className="tbl-ellipsis">
+                  {inv.customer}
+                  {inv.sensitive ? <span className="rule-sev">sensitive</span> : null}
+                </span>
+                <span className="mono tbl-dim inv-due">due {shortDate(inv.dueDate)}</span>
+                <span className="chip-row">
+                  {committed !== null ? (
+                    <span className="chip" style={{ color: "var(--ok)" }}>
+                      committed {lakh(committed)}
+                      {inv.committedDate !== undefined
+                        ? ` · ${shortDate(inv.committedDate)}`
+                        : ""}
                     </span>
+                  ) : null}
+                  <span className="chip" style={{ color: statusColor }}>
+                    {inv.chasedAt !== null ? "chased · " : ""}
+                    {inv.status}
                   </span>
-                </div>
+                </span>
+                <span className="mono tbl-right">{lakh(inv.amount)}</span>
               </div>
             );
-          })
-        )}
-        {hidden > 0 ? (
-          <div className="more-row">+{hidden} more outstanding</div>
-        ) : null}
-      </div>
-    </section>
+          })}
+          {hidden > 0 ? (
+            <div className="more-row">+{hidden} more outstanding</div>
+          ) : null}
+        </div>
+      )}
+    </Panel>
   );
 }
 
-function BudgetsPanel({ departments }: { departments: Department[] }) {
+function BudgetsPanel({
+  departments,
+  overage,
+}: {
+  departments: Department[];
+  overage: number;
+}) {
+  // Every bar shares one scale that reaches past the overage ceiling, so the
+  // 100% mark and the ceiling tick sit at the same x in every row.
+  const ceiling = 1 + Math.max(0, overage);
+  const maxRatio = departments.reduce((m, d) => {
+    const r = d.quarterlyBudget > 0 ? d.periodSpend / d.quarterlyBudget : 0;
+    return Math.max(m, r);
+  }, 0);
+  const scaleMax = Math.max(ceiling, maxRatio) * 1.04;
+  const pos = (ratio: number) => `${(clamp01(ratio / scaleMax) * 100).toFixed(2)}%`;
+
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <span className="panel-title">Department Budgets</span>
-        <span className="panel-note">quarter to date</span>
-      </div>
-      <div className="panel-body" style={{ paddingTop: 4, paddingBottom: 6 }}>
-        {departments.map((d) => {
+    <Panel
+      title="Department Budgets"
+      className="panel-auto"
+      right={
+        <span className="panel-note">
+          quarter to date · <span className="tick-key tick-key-budget" /> budget ·{" "}
+          <span className="tick-key tick-key-ceiling" /> +{percent(overage)} ceiling
+        </span>
+      }
+    >
+      {departments.length === 0 ? (
+        <Empty>No departments configured</Empty>
+      ) : (
+        departments.map((d) => {
           const ratio = d.quarterlyBudget > 0 ? d.periodSpend / d.quarterlyBudget : 0;
           const fill =
-            ratio > 1 ? "bar-fill-danger" : ratio > 0.85 ? "bar-fill-warn" : "";
+            ratio > ceiling
+              ? "bar-fill-danger"
+              : ratio > 1
+                ? "bar-fill-warn"
+                : ratio > 0.85
+                  ? "bar-fill-warn"
+                  : "";
+          const pctColor =
+            ratio > ceiling ? "var(--danger)" : ratio > 0.85 ? "var(--warn)" : "var(--text)";
+
           return (
-            <div className="dept-row" key={d.id}>
+            <div className="dept" key={d.id}>
               <div className="dept-line">
                 <span className="dept-name">{d.name}</span>
                 <span className="dept-figures">
-                  <span style={{ color: "var(--text)" }}>
-                    {lakh(d.periodSpend)}
-                  </span>{" "}
-                  / {lakh(d.quarterlyBudget)} · {percent(ratio)}
+                  <span style={{ color: "var(--text)" }}>{lakh(d.periodSpend)}</span>
+                  {" / "}
+                  {lakh(d.quarterlyBudget)}
+                  <span className="dept-pct" style={{ color: pctColor }}>
+                    {percent(ratio)}
+                  </span>
                 </span>
               </div>
-              <div className="bar">
-                <div
-                  className={`bar-fill ${fill}`}
-                  style={{ width: `${Math.max(0, Math.min(100, ratio * 100))}%` }}
-                />
+              <div
+                className="bar bar-lg"
+                role="img"
+                aria-label={`${d.name}: ${percent(ratio)} of quarterly budget spent`}
+              >
+                <div className={`bar-fill ${fill}`} style={{ width: pos(ratio) }} />
+                <span className="bar-tick bar-tick-budget" style={{ left: pos(1) }} />
+                <span className="bar-tick bar-tick-ceiling" style={{ left: pos(ceiling) }} />
               </div>
             </div>
           );
-        })}
-      </div>
-    </section>
+        })
+      )}
+      {departments.length > 4 ? (
+        <div className="more-row">{plural(departments.length, "department")}</div>
+      ) : null}
+    </Panel>
   );
 }
 
-function AuthorityPanel({ state }: { state: DashboardState }) {
-  const r = state.company.rules;
-  const headroom = state.forecast.headroom;
-  return (
-    <section className="panel">
-      <div className="panel-head">
-        <span className="panel-title">Delegated Authority</span>
-        <span className="panel-note">CFO policy</span>
-      </div>
-      <div className="panel-body">
-        <dl className="kv">
-          <dt>max autonomous / request</dt>
-          <dd>{rupees(r.maxAutonomousAmount)}</dd>
-
-          <dt>min cash threshold</dt>
-          <dd>{rupees(r.minCashThreshold)}</dd>
-
-          <dt>max budget overage</dt>
-          <dd>{percent(r.maxBudgetOverage)}</dd>
-
-          <dt>vendor history required</dt>
-          <dd>{r.requireVendorHistory ? "yes" : "no"}</dd>
-
-          <dt>anomaly flag at</dt>
-          <dd>{r.anomalyMultiplier.toFixed(1)}×</dd>
-
-          <dt>reserved against headroom</dt>
-          <dd>{rupees(state.reservedTotal)}</dd>
-
-          <dt>{headroom < 0 ? "headroom deficit" : "headroom remaining"}</dt>
-          <dd style={{ color: headroom <= 0 ? "var(--danger)" : "var(--ok)" }}>
-            {headroom < 0
-              ? `${rupees(Math.abs(headroom))} short`
-              : rupees(headroom)}
-          </dd>
-        </dl>
-      </div>
-    </section>
-  );
-}
-
-function ReplayPanel({ replay }: { replay: ReplayResult | null }) {
-  if (replay === null) {
-    return (
-      <section className="panel">
-        <div className="panel-head">
-          <span className="panel-title">Counterfactual Replay</span>
-        </div>
-        <div className="panel-body">
-          <div className="empty">Not run</div>
-        </div>
-      </section>
-    );
-  }
-
-  const rows = replay.rows ?? [];
-  const fasterCount = replay.total - replay.flagged;
-
-  // The agreements are the boring rows. Only the disagreements say anything.
-  const disagreements = rows.filter((r) => !r.agreed);
-  const shown = disagreements.slice(0, RAIL_ROW_CAP);
-  const hidden = disagreements.length - shown.length;
-
-  return (
-    <section className="panel">
-      <div className="panel-head">
-        <span className="panel-title">Counterfactual Replay</span>
-        <span className="panel-note">{replay.total} historical requests</span>
-      </div>
-      <div className="panel-body">
-        <div className="replay-figures">
-          <div className="replay-fig">
-            <div className="replay-fig-value" style={{ color: "var(--ok)" }}>
-              {replay.agreed}
-            </div>
-            <div className="replay-fig-label">agreed</div>
-          </div>
-          <div className="replay-fig">
-            <div className="replay-fig-value" style={{ color: "var(--warn)" }}>
-              {replay.flagged}
-            </div>
-            <div className="replay-fig-label">flagged</div>
-          </div>
-          <div className="replay-fig">
-            <div className="replay-fig-value" style={{ color: "var(--danger)" }}>
-              {replay.flaggedThatWentOverBudget}
-            </div>
-            <div className="replay-fig-label">flagged · overran</div>
-          </div>
-        </div>
-
-        <p className="replay-note" style={{ margin: 0 }}>
-          Of the <b>{replay.flagged}</b> requests the agent would have handed
-          back, <b>{replay.flaggedThatWentOverBudget}</b> subsequently exceeded
-          their department budget. The remaining <b>{fasterCount}</b> would have
-          been decided immediately, against an average human turnaround of{" "}
-          <b>{formatDays(replay.averageHumanTurnaroundDays)}</b>.
-        </p>
-
-        <div style={{ marginTop: 12 }}>
-          <div className="more-row" style={{ marginTop: 0, marginBottom: 4 }}>
-            {disagreements.length === 0
-              ? "Agent agreed with every historical decision"
-              : `Disagreements (${disagreements.length})`}
-          </div>
-
-          {shown.map((row) => (
-            <div className="dept-row" key={row.request.id}>
-              <div className="dept-line">
-                <span className="dept-name mono" style={{ fontSize: 12 }}>
-                  {row.request.id} · {lakh(row.request.amount)} ·{" "}
-                  {row.request.category.replace(/_/g, " ")}
-                </span>
-                <span className="dept-figures">
-                  <span style={{ color: "var(--text-2)" }}>
-                    human {row.request.humanDecision}
-                  </span>
-                  {" → "}
-                  <span style={{ color: "var(--warn)" }}>
-                    {row.agentOutcome.toLowerCase()}
-                  </span>
-                  {row.request.wentOverBudget ? (
-                    <span style={{ color: "var(--danger)" }}> · overran</span>
-                  ) : null}
-                </span>
-              </div>
-            </div>
-          ))}
-
-          {hidden > 0 ? (
-            <div className="more-row">+{hidden} more disagreements</div>
-          ) : null}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function formatDays(value: number): string {
-  return Number.isFinite(value) ? `${value.toFixed(1)} days` : "—";
+function clamp01(n: number): number {
+  if (Number.isNaN(n)) return 0;
+  return Math.min(1, Math.max(0, n));
 }

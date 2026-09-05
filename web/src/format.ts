@@ -110,6 +110,11 @@ export function hasWeek(week: number): boolean {
   return Number.isFinite(week) && week > 0;
 }
 
+/** `1 event`, `14 events`. Irregular plurals pass the second form explicitly. */
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
 const RULE_LABELS: Record<string, string> = {
   max_autonomous_amount: "Delegated authority limit",
   min_cash_threshold: "Cash safety threshold",

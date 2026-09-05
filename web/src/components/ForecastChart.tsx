@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
 import {
   Area,
   AreaChart,
@@ -12,6 +14,7 @@ import {
 import type { TooltipProps } from "recharts";
 import type { Forecast, ForecastWeek } from "@shared/types";
 import { lakh, lakhSigned, rupees, shortDate, toLakhs, weekLabel } from "../format";
+import { Empty, Panel } from "./Panel";
 
 interface ChartRow {
   week: number;
@@ -32,22 +35,25 @@ const OK = "#38b48b";
 const DANGER = "#d9494f";
 const AXIS = "#8794a6";
 const GRID = "#161d27";
+const PANEL_BG = "#0e131a";
+const MONO = "ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace";
 
 /**
  * The plot rectangle is pinned rather than measured so the gradients can use
  * `userSpaceOnUse`: object-bounding-box units resolve against each painted
  * path's own bbox, which is *not* the plot, so the colour break landed well
- * away from the threshold line. These four numbers make it exact.
- *
- * CHART_HEIGHT must equal the content box of `.chart-wrap`.
+ * away from the threshold line. Margins and axis height are constants; the
+ * overall height is measured from the wrapper so the chart fills whatever the
+ * row gives it (the row height varies by viewport).
  */
-const CHART_HEIGHT = 284;
-const MARGIN = { top: 8, right: 20, bottom: 4, left: 4 } as const;
-const X_AXIS_HEIGHT = 30;
+const MARGIN = { top: 10, right: 16, bottom: 2, left: 0 } as const;
+const X_AXIS_HEIGHT = 28;
 const PLOT_TOP = MARGIN.top;
-const PLOT_BOTTOM = CHART_HEIGHT - MARGIN.bottom - X_AXIS_HEIGHT;
 
 export function ForecastChart({ forecast }: { forecast: Forecast }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const height = useContentHeight(wrapRef);
+
   const rows: ChartRow[] = forecast.weeks.map((w) => ({
     week: w.week,
     closing: toLakhs(w.closingCash),
@@ -59,17 +65,19 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
   const values = rows.map((r) => r.closing);
   const lo = Math.min(thresholdL, ...values);
   const hi = Math.max(thresholdL, ...values);
-  const pad = Math.max(1.5, (hi - lo) * 0.22);
+  const pad = Math.max(1.5, (hi - lo) * 0.15);
   // No clamp at zero: cash genuinely can go negative under a stress scenario,
   // and clipping it drew the line straight over the X-axis labels.
-  const domainMin = Math.floor(lo - pad);
-  const domainMax = Math.ceil(hi + pad);
+  const scale = niceScale(lo - pad, hi + pad, 7);
+  const domainMin = scale.min;
+  const domainMax = scale.max;
 
   // Where the threshold sits as a 0..1 fraction of the plot rectangle. With
   // userSpaceOnUse this is the same fraction both gradients resolve against,
   // so the colour changes exactly on the dashed line.
   const span = domainMax - domainMin || 1;
   const cut = clamp01((domainMax - thresholdL) / span);
+  const plotBottom = Math.max(PLOT_TOP + 1, height - MARGIN.bottom - X_AXIS_HEIGHT);
 
   const hasBreach = rows.some((r) => r.below);
   const firstWeek = rows[0]?.week ?? 1;
@@ -78,158 +86,272 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
   const showZeroLine = domainMin < 0 && domainMax > 0;
 
   return (
-    <section className="panel">
-      <div className="panel-head">
-        <span className="panel-title">13-Week Cash Forecast</span>
-        <div className="chart-legend">
-          <span style={{ color: OK }}>
-            <i className="swatch" /> above floor
+    <Panel
+      title={`${forecast.weeks.length || 13}-Week Cash Forecast`}
+      className="panel-fill"
+      bodyClassName="panel-body-flush panel-body-chart"
+      right={
+        <>
+          <span className="chart-legend">
+            <span style={{ color: OK }}>
+              <i className="swatch" /> above floor
+            </span>
+            <span style={{ color: DANGER }}>
+              <i className="swatch" /> below floor
+            </span>
           </span>
-          <span style={{ color: DANGER }}>
-            <i className="swatch" /> below floor
+          <span className="panel-note">
+            min {lakh(forecast.projectedMinimum)} ·{" "}
+            {weekLabel(forecast.projectedMinimumWeek)}
           </span>
-        </div>
-        <span className="panel-note">
-          min {lakh(forecast.projectedMinimum)} ·{" "}
-          {weekLabel(forecast.projectedMinimumWeek)}
-        </span>
-      </div>
+        </>
+      }
+    >
+      <div className="chart-wrap" ref={wrapRef}>
+        {rows.length === 0 ? (
+          <Empty>No forecast weeks yet</Empty>
+        ) : height > 40 ? (
+          <ResponsiveContainer width="100%" height={height}>
+            <AreaChart data={rows} margin={{ ...MARGIN }}>
+              <defs>
+                <linearGradient
+                  id="rw-stroke"
+                  gradientUnits="userSpaceOnUse"
+                  x1={0}
+                  y1={PLOT_TOP}
+                  x2={0}
+                  y2={plotBottom}
+                >
+                  <stop offset={cut} stopColor={OK} />
+                  <stop offset={cut} stopColor={DANGER} />
+                </linearGradient>
+                <linearGradient
+                  id="rw-fill"
+                  gradientUnits="userSpaceOnUse"
+                  x1={0}
+                  y1={PLOT_TOP}
+                  x2={0}
+                  y2={plotBottom}
+                >
+                  {hasBreach ? (
+                    <>
+                      <stop offset={0} stopColor={OK} stopOpacity={0.3} />
+                      <stop offset={cut} stopColor={OK} stopOpacity={0.03} />
+                      <stop offset={cut} stopColor={DANGER} stopOpacity={0.06} />
+                      <stop offset={1} stopColor={DANGER} stopOpacity={0.3} />
+                    </>
+                  ) : (
+                    // Nothing breaches: no part of this chart may read as red.
+                    <>
+                      <stop offset={0} stopColor={OK} stopOpacity={0.3} />
+                      <stop offset={1} stopColor={OK} stopOpacity={0.02} />
+                    </>
+                  )}
+                </linearGradient>
+              </defs>
 
-      <div className="chart-wrap">
-        <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-          <AreaChart data={rows} margin={{ ...MARGIN }}>
-            <defs>
-              <linearGradient
-                id="rw-stroke"
-                gradientUnits="userSpaceOnUse"
-                x1={0}
-                y1={PLOT_TOP}
-                x2={0}
-                y2={PLOT_BOTTOM}
-              >
-                <stop offset={cut} stopColor={OK} />
-                <stop offset={cut} stopColor={DANGER} />
-              </linearGradient>
-              <linearGradient
-                id="rw-fill"
-                gradientUnits="userSpaceOnUse"
-                x1={0}
-                y1={PLOT_TOP}
-                x2={0}
-                y2={PLOT_BOTTOM}
-              >
-                {hasBreach ? (
-                  <>
-                    <stop offset={0} stopColor={OK} stopOpacity={0.3} />
-                    <stop offset={cut} stopColor={OK} stopOpacity={0.03} />
-                    <stop offset={cut} stopColor={DANGER} stopOpacity={0.06} />
-                    <stop offset={1} stopColor={DANGER} stopOpacity={0.3} />
-                  </>
-                ) : (
-                  // Nothing breaches: no part of this chart may read as red.
-                  <>
-                    <stop offset={0} stopColor={OK} stopOpacity={0.3} />
-                    <stop offset={1} stopColor={OK} stopOpacity={0.02} />
-                  </>
-                )}
-              </linearGradient>
-            </defs>
+              <CartesianGrid stroke={GRID} vertical={false} />
 
-            <CartesianGrid stroke={GRID} vertical={false} />
+              {/* One band per contiguous run, so a recovery week is never
+                  painted as if it had breached. */}
+              {breachRuns.map((run) => (
+                <ReferenceArea
+                  key={`breach-${run.from}-${run.to}`}
+                  x1={Math.max(firstWeek, run.from - 0.5)}
+                  x2={Math.min(lastWeek, run.to + 0.5)}
+                  fill={DANGER}
+                  fillOpacity={0.07}
+                  stroke={DANGER}
+                  strokeOpacity={0.22}
+                  strokeDasharray="2 3"
+                  ifOverflow="hidden"
+                />
+              ))}
 
-            {/* One band per contiguous run, so a recovery week is never
-                painted as if it had breached. */}
-            {breachRuns.map((run) => (
-              <ReferenceArea
-                key={`breach-${run.from}-${run.to}`}
-                x1={Math.max(firstWeek, run.from - 0.5)}
-                x2={Math.min(lastWeek, run.to + 0.5)}
-                fill={DANGER}
-                fillOpacity={0.07}
-                stroke={DANGER}
-                strokeOpacity={0.22}
-                strokeDasharray="2 3"
-                ifOverflow="hidden"
+              <XAxis
+                dataKey="week"
+                type="number"
+                domain={[firstWeek, lastWeek]}
+                height={X_AXIS_HEIGHT}
+                ticks={rows.map((r) => r.week)}
+                tickFormatter={(v: number) => `W${v}`}
+                tick={{ fill: AXIS, fontSize: 11.5, fontFamily: MONO }}
+                axisLine={{ stroke: "#222c38" }}
+                tickLine={false}
+                tickMargin={7}
               />
-            ))}
+              <YAxis
+                domain={[domainMin, domainMax]}
+                ticks={scale.ticks}
+                width={50}
+                tickFormatter={(v: number) => `${v}L`}
+                tick={{ fill: AXIS, fontSize: 11.5, fontFamily: MONO }}
+                axisLine={false}
+                tickLine={false}
+              />
 
-            <XAxis
-              dataKey="week"
-              type="number"
-              domain={[firstWeek, lastWeek]}
-              height={X_AXIS_HEIGHT}
-              ticks={rows.map((r) => r.week)}
-              tickFormatter={(v: number) => `W${v}`}
-              tick={{ fill: AXIS, fontSize: 12, fontFamily: "ui-monospace, monospace" }}
-              axisLine={{ stroke: "#222c38" }}
-              tickLine={false}
-              tickMargin={8}
-            />
-            <YAxis
-              domain={[domainMin, domainMax]}
-              width={54}
-              tickFormatter={(v: number) => `${v}L`}
-              tick={{ fill: AXIS, fontSize: 12, fontFamily: "ui-monospace, monospace" }}
-              axisLine={false}
-              tickLine={false}
-            />
+              {showZeroLine ? (
+                <ReferenceLine
+                  y={0}
+                  stroke="#5c6a7c"
+                  strokeWidth={1.4}
+                  ifOverflow="hidden"
+                  label={{
+                    value: "ZERO",
+                    position: "insideBottomLeft",
+                    fill: "#8794a6",
+                    fontSize: 11,
+                    fontFamily: MONO,
+                    letterSpacing: 1.2,
+                    dy: -4,
+                  }}
+                />
+              ) : null}
 
-            {showZeroLine ? (
               <ReferenceLine
-                y={0}
-                stroke="#5c6a7c"
-                strokeWidth={1.4}
+                y={thresholdL}
+                stroke={DANGER}
+                strokeDasharray="5 4"
+                strokeOpacity={0.85}
                 ifOverflow="hidden"
-                label={{
-                  value: "ZERO",
-                  position: "insideBottomRight",
-                  fill: "#8794a6",
-                  fontSize: 12,
-                  fontFamily: "ui-monospace, monospace",
-                  letterSpacing: 1.2,
-                  dy: -4,
-                }}
+                label={
+                  <ThresholdLabel text={`SAFETY THRESHOLD ${lakh(forecast.threshold)}`} />
+                }
               />
-            ) : null}
 
-            <ReferenceLine
-              y={thresholdL}
-              stroke={DANGER}
-              strokeDasharray="5 4"
-              strokeOpacity={0.85}
-              ifOverflow="hidden"
-              label={{
-                value: `SAFETY THRESHOLD ${lakh(forecast.threshold)}`,
-                position: "insideTopRight",
-                fill: DANGER,
-                fontSize: 13,
-                fontFamily: "ui-monospace, monospace",
-                letterSpacing: 1.4,
-                dy: -6,
-              }}
-            />
+              <Tooltip
+                content={<ForecastTooltip />}
+                cursor={{ stroke: "#39465a", strokeWidth: 1 }}
+              />
 
-            <Tooltip
-              content={<ForecastTooltip />}
-              cursor={{ stroke: "#39465a", strokeWidth: 1 }}
-            />
-
-            <Area
-              type="monotone"
-              dataKey="closing"
-              stroke="url(#rw-stroke)"
-              strokeWidth={2.4}
-              fill="url(#rw-fill)"
-              dot={renderDot}
-              activeDot={{ r: 5, strokeWidth: 2, stroke: "#0a0d12" }}
-              isAnimationActive
-              animationDuration={620}
-              animationEasing="ease-out"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+              <Area
+                type="monotone"
+                dataKey="closing"
+                stroke="url(#rw-stroke)"
+                strokeWidth={2.4}
+                fill="url(#rw-fill)"
+                dot={renderDot}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: "#0a0d12" }}
+                isAnimationActive
+                animationDuration={620}
+                animationEasing="ease-out"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : null}
       </div>
-    </section>
+    </Panel>
+  );
+}
+
+/**
+ * The wrapper's content-box height, tracked live. The chart fills the row it
+ * is given instead of hard-coding a height that only fits one viewport.
+ */
+function useContentHeight(ref: RefObject<HTMLDivElement>): number {
+  const [height, setHeight] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (el === null) return;
+
+    const measure = () => {
+      const next = Math.floor(el.clientHeight);
+      setHeight((prev) => (prev === next ? prev : next));
+    };
+
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
+    }
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+
+  return height;
+}
+
+/**
+ * Round tick values with a 1/2/5 step, so the axis reads 20L/30L/40L and not
+ * 16L/31L/46L. The domain snaps outward to the nearest tick.
+ */
+function niceScale(
+  lo: number,
+  hi: number,
+  targetTicks: number,
+): { min: number; max: number; ticks: number[] } {
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) {
+    return { min: 0, max: 10, ticks: [0, 5, 10] };
+  }
+  const span = Math.max(hi - lo, 1);
+  const rough = span / Math.max(1, targetTicks - 1);
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const norm = rough / mag;
+  const step = (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
+
+  const min = Math.floor(lo / step) * step;
+  const max = Math.ceil(hi / step) * step;
+  const count = Math.round((max - min) / step);
+  const ticks: number[] = [];
+  for (let i = 0; i <= count; i++) {
+    ticks.push(Number((min + i * step).toFixed(6)));
+  }
+  return { min, max, ticks };
+}
+
+interface LabelViewBox {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Sits just above the dashed line, flush right, on a dark pill — so the text
+ * never reads as struck through. Drops below the line only when the line is
+ * within a pill's height of the top of the plot.
+ */
+function ThresholdLabel({ text, viewBox }: { text: string; viewBox?: LabelViewBox }) {
+  const x = viewBox?.x ?? 0;
+  const y = viewBox?.y ?? 0;
+  const width = viewBox?.width ?? 0;
+  if (width <= 0) return null;
+
+  const fontSize = 11;
+  const w = Math.round(text.length * (fontSize * 0.64 + 1) + 18);
+  const h = 18;
+  const rx = Math.max(x + 2, x + width - w - 4);
+  const above = y - h - 5;
+  const ry = above < PLOT_TOP ? y + 5 : above;
+
+  return (
+    <g>
+      <rect
+        x={rx}
+        y={ry}
+        width={w}
+        height={h}
+        rx={3}
+        fill={PANEL_BG}
+        stroke={DANGER}
+        strokeOpacity={0.45}
+      />
+      <text
+        x={rx + w / 2}
+        y={ry + h / 2 + 0.5}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={DANGER}
+        fontSize={fontSize}
+        fontFamily={MONO}
+        fontWeight={600}
+        letterSpacing={1}
+      >
+        {text}
+      </text>
+    </g>
   );
 }
 

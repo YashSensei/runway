@@ -50,13 +50,7 @@ export function EscalationCard({
           <span className="chip">{reasonLabel(decision.reasonCode)}</span>
         </div>
 
-        <p
-          style={{
-            margin: "0 0 12px",
-            fontSize: 13,
-            color: "var(--text-2)",
-          }}
-        >
+        <p className="esc-desc">
           {request.description} · requested by{" "}
           <span className="mono">{request.requestedBy}</span>
         </p>
