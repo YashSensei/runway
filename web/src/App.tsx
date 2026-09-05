@@ -1,11 +1,11 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import type {
   DashboardState,
   Department,
   Invoice,
   ReplayResult,
 } from "@shared/types";
-import { useDashboardState } from "./api";
+import { useDashboardState, resolveEscalation } from "./api";
 import { clock, lakh, percent, rupees, stamp } from "./format";
 import { StatHeader } from "./components/StatHeader";
 import { ForecastChart } from "./components/ForecastChart";
@@ -78,6 +78,7 @@ export default function App() {
           <EscalationsPanel
             state={state}
             onAskWhy={(id) => setDecisionId(id)}
+            onResolve={(requestId, action) => void resolveEscalation(requestId, action)}
           />
           <ReceivablesPanel invoices={state.invoices} />
           <BudgetsPanel departments={state.departments} />
@@ -104,9 +105,11 @@ export default function App() {
 function EscalationsPanel({
   state,
   onAskWhy,
+  onResolve,
 }: {
   state: DashboardState;
   onAskWhy: (decisionId: string) => void;
+  onResolve: (requestId: string, action: "approve" | "reject" | "defer") => void;
 }) {
   const { escalations } = state;
 
@@ -136,6 +139,9 @@ function EscalationsPanel({
               key={esc.decision.id}
               escalation={esc}
               onAskWhy={(v) => onAskWhy(v.decision.id)}
+              onApprove={(v) => onResolve(v.request.id, "approve")}
+              onReject={(v) => onResolve(v.request.id, "reject")}
+              onDefer={(v) => onResolve(v.request.id, "defer")}
             />
           ))
         )}

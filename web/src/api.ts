@@ -92,6 +92,24 @@ export interface DemoResponse {
   detail: string;
 }
 
+/**
+ * The CFO acting on an escalation.
+ *
+ * Approving commits the reservation the agent declined to make, so the
+ * forecast and headroom move on the very next poll.
+ */
+export async function resolveEscalation(
+  requestId: string,
+  action: "approve" | "reject" | "defer",
+): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/escalations/${requestId}/${action}`, { method: "POST" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /** POSTs to `/api/demo/<action>` and reports the response status. */
 export async function postDemo(action: string): Promise<DemoResponse> {
   try {
