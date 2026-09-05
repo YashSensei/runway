@@ -1,4 +1,4 @@
-# CFO Co-Pilot — Product Requirements Document
+﻿# CFO Co-Pilot — Product Requirements Document
 
 > **An AI that doesn't just warn you that you're running out of cash — it goes and collects the money, then decides what you can safely spend.**
 
@@ -207,7 +207,7 @@ Within that authority the agent still evaluates:
 
 > **ESCALATED — ₹4.5L, Marketing, campaign spend**
 >
-> This is within your ₹5L authority, but committing it would reduce projected minimum cash from ₹22.4L to ₹17.9L — already below your ₹25L safety threshold.
+> This is within your ₹5L authority, but committing it would reduce projected minimum cash from ₹19.4L to ₹14.9L — already below your ₹25L safety threshold.
 >
 > Marketing is also 25% over its quarterly budget, exceeding the 10% overage allowance.
 >
@@ -233,7 +233,7 @@ Two requests that each individually pass can **jointly** breach the threshold. E
 ### Headroom
 
 ```text
-headroom = projected_minimum_cash − safety_threshold − reserved_commitments
+headroom = projected_minimum_cash − safety_threshold
 ```
 
 Every approval **reserves** against headroom immediately, before the money actually moves. Every recovered receivable **releases** headroom. All requests are evaluated against *current* headroom, and evaluation is serialized so two concurrent requests cannot both read the same balance.
@@ -422,8 +422,8 @@ Reverse-chronological feed of everything the agent did on its own:
 ```text
 14:31  ✉  Sent collection email — Acme Corp, ₹9L, 47 days overdue
 14:31  ✉  Sent collection email — Northwind, ₹6L, 31 days overdue
-14:38  ⬆  Reply parsed — Acme commits ₹8L by 12 Sep
-14:38  ↻  Forecast updated — projected minimum 22.4L → 30.4L
+14:38  ⬆  Reply parsed — Acme commits ₹9L by 25 Sep
+14:38  ↻  Forecast updated — projected minimum 19.4L → 34.4L
 14:41  ✓  Auto-approved ₹3.2L — Engineering
 14:52  ⚠  Escalated ₹2.8L — Sales — insufficient headroom
 ```
@@ -542,13 +542,13 @@ Built around one company. The two USPs must be shown **interacting** — that is
 
 ### Scene 1 — Baseline (15s)
 
-Dashboard. Current cash ₹52L. Projected minimum ₹31L. Threshold ₹25L. Healthy.
+Dashboard. Current cash ₹52L. Projected minimum ₹37.5L. Threshold ₹25L. Healthy.
 
 ### Scene 2 — Reality intrudes (20s)
 
 A ₹15L receivable slips and payroll rises ₹3L. Forecast recomputes automatically.
 
-> Projected minimum: **₹31L → ₹22.4L.** Breach in week 7. Chart turns red.
+> Projected minimum: **₹37.5L → ₹19.4L.** Breach in week 7. Chart turns red.
 
 **Nobody clicked anything.** Say this out loud.
 
@@ -556,11 +556,11 @@ A ₹15L receivable slips and payroll rises ₹3L. Forecast recomputes automatic
 
 The alarm fires. The activity log fills in real time:
 
-- Diagnoses a ₹2.6L gap in week 7
+- Diagnoses a ₹5.6L shortfall in week 7
 - Ranks overdue receivables by amount, age, payment history, and expected arrival date
-- Sends three collection emails — show one, it's a genuinely good email
-- A reply arrives: Acme commits ₹12L by the 12th
-- Reply parsed → forecast updated → **projected minimum ₹22.4L → ₹34.4L**, chart returns to green
+- Sends two collection emails, and holds a third back because that account is relationship-sensitive — show one, it is a genuinely good email
+- Replies arrive: Acme and Northwind commit ₹15L between them
+- Replies parsed → forecast updated → **projected minimum ₹19.4L → ₹34.4L**, chart returns to green
 
 > "It didn't tell me I was going to run out of money. It went and got the money."
 
@@ -576,7 +576,7 @@ Marketing requests ₹4.5L.
 
 > **APPROVED.**
 >
-> *"I'm approving this because I recovered ₹12L in receivables this morning. Before that collection, projected minimum was ₹22.4L and committing ₹4.5L would have taken it to ₹17.9L — I would have escalated this to you."*
+> *"I'm approving this because I recovered ₹15L in receivables this morning. Before that collection, projected minimum was ₹19.4L and committing ₹4.5L would have taken it to ₹14.9L — I would have escalated this to you."*
 
 **The agent's own autonomous action changed its own decision.** Pause here.
 
