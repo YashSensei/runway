@@ -1,0 +1,46 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "runway",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "observability": {
+    "enabled": true
+  },
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "COMPANY_AGENT",
+        "class_name": "CompanyAgent"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["CompanyAgent"]
+    }
+  ],
+
+  "vars": {
+    "EMAIL_PROVIDER": "simulated",
+    "COLLECTION_FROM_NAME": "Runway (Finance Ops)",
+    "COLLECTION_FROM_EMAIL": "onboarding@resend.dev",
+    "LLM_PROVIDER": "none",
+    "LLM_BASE_URL": "",
+    "LLM_MODEL": ""
+  }
+
+  // Secrets (set via `wrangler secret put`):
+  //   RESEND_API_KEY   — only if EMAIL_PROVIDER=resend
+  //   LLM_API_KEY      — only if LLM_PROVIDER=openai-compatible
+}
