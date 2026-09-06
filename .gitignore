@@ -30,3 +30,8 @@ Thumbs.db
 # demo artifacts
 recordings/
 *.mp4
+
+# demo video pipeline artefacts (large binaries)
+demo/out/
+demo/node_modules/
+demo/package-lock.json
