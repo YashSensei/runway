@@ -278,7 +278,7 @@ function RunLog({ runs }: { runs: AgentRun[] }) {
 
   return (
     <Panel
-      title="Run Log"
+      title="Run log"
       className="panel-auto"
       bodyClassName="panel-body-flush"
       right={
@@ -309,9 +309,9 @@ function RunLog({ runs }: { runs: AgentRun[] }) {
               <span className="mono tbl-dim">{clock(run.at)}</span>
               <span>
                 {run.trigger === "alarm" ? (
-                  <span className="tag-agent" style={{ fontSize: 10 }}>ALARM</span>
+                  <span className="tag-agent">Alarm</span>
                 ) : (
-                  <span className="tag-human" style={{ fontSize: 10 }}>MANUAL</span>
+                  <span className="tag-human">Manual</span>
                 )}
               </span>
               <span className="mono tbl-right">{lakh(run.projectedMinimum)}</span>

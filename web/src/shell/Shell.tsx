@@ -125,7 +125,7 @@ export function Shell({
       <nav className="rail" aria-label="Sections">
         <div className="rail-brand" title="Runway · Autonomous CFO">
           <span className="rail-mark">R</span>
-          <span className="rail-word">RUNWAY</span>
+          <span className="rail-word">Runway</span>
         </div>
 
         <ul className="rail-list">
@@ -172,7 +172,7 @@ export function Shell({
       <div className="shell-main">
         <header className="topbar">
           <div className="brand">
-            <span className="brand-mark">RUNWAY</span>
+            <span className="brand-mark">Runway</span>
             <span className="brand-sub">Autonomous CFO</span>
           </div>
 
@@ -215,7 +215,7 @@ export function Shell({
           <div className="alert-bar alert-bar-danger" role="alert">
             <span className="alert-bar-title">Stale</span>
             <span>
-              LAST GOOD DATA <span className="mono">{staleSeconds}s</span> AGO
+              Last good data <span className="mono">{staleSeconds}s</span> ago
               {error !== null ? (
                 <>
                   {" · "}

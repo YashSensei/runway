@@ -353,7 +353,7 @@ export default function PolicyPage(props: PageProps) {
 
       <div className="stack" style={{ minWidth: 0 }}>
         <Panel
-          title="Impact Preview"
+          title="Impact preview"
           className="panel-auto"
           right={
             <span className="panel-note">
@@ -780,7 +780,7 @@ const LADDER: Array<{ n: number; test: string; outcome: "REJECTED" | "ESCALATED"
 
 function PrecedenceLadder() {
   return (
-    <Panel title="Precedence Ladder" className="panel-auto" right={<span className="panel-note">first match wins</span>}>
+    <Panel title="Precedence ladder" className="panel-auto" right={<span className="panel-note">first match wins</span>}>
       <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 0 }}>
         {LADDER.map((step, i) => (
           <li

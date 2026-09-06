@@ -13,7 +13,7 @@ export function EmailPreview({ email, onClose }: Props) {
 
   return (
     <Modal
-      title="Collection Email"
+      title="Collection email"
       onClose={onClose}
       headerExtra={
         <span

@@ -49,7 +49,7 @@ export function NarrativeStrip({ state, onOpenDecision }: Props) {
   if (item === undefined) {
     return (
       <section className="narrative narrative-empty" aria-label="Agent narrative">
-        <span className="tag-agent">AGENT</span>
+        <span className="tag-agent">Agent</span>
         <span className="narrative-text narrative-muted">
           Nothing narrated yet — the agent writes here the moment it acts.
         </span>
@@ -70,7 +70,7 @@ export function NarrativeStrip({ state, onOpenDecision }: Props) {
       aria-live="polite"
     >
       <div className="narrative-head">
-        <span className="tag-agent">AGENT</span>
+        <span className="tag-agent">Agent</span>
         <span className="narrative-time mono">{clock(item.at)}</span>
         <span className="narrative-meta">{meta}</span>
         <span className="narrative-spacer" />

@@ -34,7 +34,7 @@ export function ActivityLog({
 
   return (
     <Panel
-      title="Agent Activity"
+      title="Agent activity"
       className="panel-fill"
       bodyClassName="panel-body-flush"
       right={
@@ -93,11 +93,11 @@ export function ActivityLog({
                 <span className="log-summary">{entry.summary}</span>
 
                 <span className="log-tail">
-                  {clickable ? <span className="log-open">OPEN →</span> : null}
+                  {clickable ? <span className="log-open">Open</span> : null}
                   {entry.actor === "agent" ? (
-                    <span className="tag-agent">AGENT</span>
+                    <span className="tag-agent">Agent</span>
                   ) : (
-                    <span className="tag-human">HUMAN</span>
+                    <span className="tag-human">Human</span>
                   )}
                 </span>
               </button>

@@ -86,7 +86,7 @@ export function DecisionRecord({ view, decisions, onOpenDecision }: RecordProps)
           {departmentName} · {vendorName} · {stamp(decision.createdAt)}
         </span>
         {isOverride ? <span className="chip chip-override">CFO override</span> : null}
-        {!isOverride ? <span className="tag-agent">AGENT</span> : null}
+        {!isOverride ? <span className="tag-agent">Agent</span> : null}
       </div>
 
       {isOverride ? (
@@ -213,7 +213,7 @@ export function DecisionDetail({ view, decisions, onClose, onOpenDecision }: Pro
   const ord = decisionOrdinals(decisions);
   return (
     <Modal
-      title="Audit Record"
+      title="Audit record"
       onClose={onClose}
       headerExtra={
         <span className="panel-note" title={`${view.decision.id} · ${view.request.id}`}>

@@ -49,7 +49,7 @@ export default function AuditPage({ state, param, navigate }: PageProps) {
 
       {param !== null ? (
         <Panel
-          title="Audit Record"
+          title="Audit record"
           tier="primary"
           className="panel-auto"
           right={
@@ -282,7 +282,7 @@ function Ledger({ state, onOpen }: { state: DashboardState; onOpen: (id: string)
                   {clock(v.decision.createdAt)}
                 </span>
                 <span>
-                  {isOverride ? <span className="chip chip-override">CFO</span> : <span className="tag-agent">AGENT</span>}
+                  {isOverride ? <span className="chip chip-override">CFO</span> : <span className="tag-agent">Agent</span>}
                 </span>
                 <span className="tbl-ellipsis">{v.departmentName}</span>
                 <span className="tbl-ellipsis tbl-dim">{v.vendorName}</span>

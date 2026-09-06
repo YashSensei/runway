@@ -230,7 +230,7 @@ function BudgetsPanel({ departments, overage }: { departments: Department[]; ove
 
   return (
     <Panel
-      title="Department Budgets"
+      title="Department budgets"
       tier="reference"
       className="panel-auto"
       right={

@@ -38,7 +38,7 @@ export function ReplayPanel({ replay }: { replay: ReplayResult | null }) {
 
   return (
     <Panel
-      title="Counterfactual Replay"
+      title="Counterfactual replay"
       right={
         <span className="panel-note">
           {plural(replay.total, "historical request")} · avg human turnaround{" "}

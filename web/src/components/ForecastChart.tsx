@@ -139,7 +139,7 @@ export function ForecastChart({
 
   return (
     <Panel
-      title={title ?? `${forecast.weeks.length || 13}-Week Cash Forecast`}
+      title={title ?? `Cash forecast · ${forecast.weeks.length || 13} weeks`}
       className="panel-fill"
       bodyClassName="panel-body-flush panel-body-chart"
       tier={tier}
@@ -273,7 +273,7 @@ export function ForecastChart({
                   strokeWidth={1.4}
                   ifOverflow="hidden"
                   label={{
-                    value: "ZERO",
+                    value: "0",
                     position: "insideBottomLeft",
                     fill: AXIS,
                     fontSize: 11,
@@ -289,7 +289,7 @@ export function ForecastChart({
                 strokeDasharray="5 4"
                 strokeOpacity={0.85}
                 ifOverflow="hidden"
-                label={<ThresholdLabel text={`SAFETY THRESHOLD ${lakh(forecast.threshold)}`} />}
+                label={<ThresholdLabel text={`Safety threshold ${lakh(forecast.threshold)}`} />}
               />
 
               <Tooltip
@@ -436,7 +436,7 @@ function ThresholdLabel({ text, viewBox }: { text: string; viewBox?: LabelViewBo
   if (width <= 0) return null;
 
   const fontSize = 11;
-  const w = Math.round(text.length * (fontSize * 0.64 + 1) + 18);
+  const w = Math.round(text.length * (fontSize * 0.58 + 1) + 18);
   const h = 18;
   const rx = Math.max(x + 2, x + width - w - 4);
   const above = y - h - 5;

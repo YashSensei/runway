@@ -85,7 +85,7 @@ function EscalationWorkspace({
 }) {
   return (
     <Panel
-      title="Escalation Workspace"
+      title="Escalation workspace"
       className="panel-auto"
       bodyClassName="panel-body-esc"
       right={
@@ -173,7 +173,7 @@ function EscalationWorkCard({
   return (
     <article className="esc">
       <header className="esc-head">
-        <span className="esc-head-title">CFO Review Required</span>
+        <span className="esc-head-title">CFO review required</span>
         <span className="chip" style={{ color: "var(--text-2)" }}>
           {reasonLabel(decision.reasonCode)}
         </span>
@@ -511,7 +511,7 @@ function RequestInbox({
 
   return (
     <Panel
-      title="Request Inbox"
+      title="Request inbox"
       className="panel-auto"
       bodyClassName="panel-body-flush"
       right={<span className="panel-note">{plural(latest.length, "request")} · latest decision per request</span>}
@@ -600,7 +600,7 @@ function RequestInbox({
                   {v.decision.actor === "cfo" ? (
                     <span className="tag-human">CFO</span>
                   ) : (
-                    <span className="tag-agent">AGENT</span>
+                    <span className="tag-agent">Agent</span>
                   )}
                 </span>
                 <span style={{ textAlign: "right" }}>
@@ -727,7 +727,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
 
   return (
     <Panel
-      title="New Request"
+      title="New request"
       className="panel-auto"
       right={<span className="panel-note">real engine · decision in under a second</span>}
     >
@@ -967,7 +967,7 @@ function VendorDirectory({ state }: PageProps) {
   const windowDays = state.company.rules.rollingWindowDays;
   return (
     <Panel
-      title="Vendor Directory"
+      title="Vendor directory"
       className="panel-auto"
       bodyClassName="panel-body-flush"
       right={<span className="panel-note">{plural(vendors.length, "vendor")}</span>}
@@ -1031,7 +1031,7 @@ function DepartmentBudgets({ state, openDecision }: PageProps) {
 
   return (
     <Panel
-      title="Department Budgets"
+      title="Department budgets"
       className="panel-auto"
       right={
         <span className="panel-note">
@@ -1102,7 +1102,7 @@ function DepartmentBudgets({ state, openDecision }: PageProps) {
                         {v.decision.actor === "cfo" ? (
                           <span className="tag-human" style={{ fontSize: 9.5 }}>CFO</span>
                         ) : (
-                          <span className="tag-agent" style={{ fontSize: 9.5 }}>AGENT</span>
+                          <span className="tag-agent">Agent</span>
                         )}
                       </span>
                       <span className="mono tbl-right">{lakh(v.request.amount)}</span>
