@@ -463,21 +463,6 @@ export function rulesPatch(current: CfoRules, proposed: CfoRules): Partial<CfoRu
 // Small shared bits
 // ---------------------------------------------------------------------------
 
-/** True at or above the two-column breakpoint the board uses. */
-export function useWide(minWidth = 1400): boolean {
-  const query = `(min-width: ${minWidth}px)`;
-  const [wide, setWide] = useState<boolean>(
-    () => typeof window !== "undefined" && window.matchMedia(query).matches,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia(query);
-    const onChange = (e: MediaQueryListEvent): void => setWide(e.matches);
-    setWide(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, [query]);
-  return wide;
-}
 
 /** Client clock ticking every `everyMs`; for countdowns. */
 export function useNow(everyMs = 250): number {
@@ -508,7 +493,4 @@ export function parseRupees(text: string): Rupees | null {
   return Number.isSafeInteger(n) ? n : null;
 }
 
-export function clamp01(n: number): number {
-  if (Number.isNaN(n)) return 0;
-  return Math.min(1, Math.max(0, n));
-}
+export { clamp01 } from "./forecastMath";

@@ -11,6 +11,7 @@ import { AuthorityPanel } from "../components/AuthorityPanel";
 import { DecisionsPanel } from "../components/DecisionsPanel";
 import { ReplayPanel } from "../components/ReplayPanel";
 import { Empty, Panel } from "../components/Panel";
+import { clamp01 } from "../lib/forecastMath";
 
 /** Receivable rows past this collapse into a "+N more" line. */
 const RECEIVABLE_ROW_CAP = 5;
@@ -235,7 +236,7 @@ function BudgetsPanel({ departments, overage }: { departments: Department[]; ove
       className="panel-auto"
       right={
         <span className="panel-note">
-          quarter to date · <span className="tick-key tick-key-budget" /> budget ·{" "}
+          quarter to date · <span className="tick-key" /> budget ·{" "}
           <span className="tick-key tick-key-ceiling" /> +{percent(overage)} ceiling
         </span>
       }
@@ -275,7 +276,7 @@ function BudgetsPanel({ departments, overage }: { departments: Department[]; ove
                 aria-label={`${d.name}: ${percent(ratio)} of quarterly budget spent`}
               >
                 <div className={`bar-fill ${fill}`} style={{ width: pos(ratio) }} />
-                <span className="bar-tick bar-tick-budget" style={{ left: pos(1) }} />
+                <span className="bar-tick" style={{ left: pos(1) }} />
                 <span className="bar-tick bar-tick-ceiling" style={{ left: pos(ceiling) }} />
               </div>
             </div>
@@ -289,7 +290,3 @@ function BudgetsPanel({ departments, overage }: { departments: Department[]; ove
   );
 }
 
-function clamp01(n: number): number {
-  if (Number.isNaN(n)) return 0;
-  return Math.min(1, Math.max(0, n));
-}

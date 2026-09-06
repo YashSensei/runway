@@ -1,6 +1,7 @@
 import type { DashboardState } from "@shared/types";
 import { lakh, percent, rupees } from "../format";
 import { Panel } from "./Panel";
+import { clamp01 } from "../lib/forecastMath";
 
 /**
  * The CFO's delegated-authority policy — the thing the product actually
@@ -108,7 +109,3 @@ export function AuthorityPanel({ state }: { state: DashboardState }) {
   );
 }
 
-function clamp01(n: number): number {
-  if (Number.isNaN(n)) return 0;
-  return Math.min(1, Math.max(0, n));
-}

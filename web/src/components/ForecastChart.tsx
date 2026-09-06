@@ -14,7 +14,7 @@ import {
 import type { TooltipProps } from "recharts";
 import type { Forecast, ForecastWeek, Rupees } from "@shared/types";
 import { lakh, lakhSigned, rupees, shortDate, toLakhs, weekLabel } from "../format";
-import { domainSamples, forecastsDiffer } from "../lib/forecastMath";
+import { clamp01, domainSamples, forecastsDiffer } from "../lib/forecastMath";
 import { CHART } from "../lib/chartTheme";
 import { Empty, Panel } from "./Panel";
 import type { PanelTier } from "./Panel";
@@ -89,6 +89,10 @@ export function ForecastChart({
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const measured = useContentHeight(wrapRef);
+  // Widest Y-range seen this session, keyed on threshold and horizon so a
+  // different company resets it. Widening is idempotent, so assigning during
+  // render is safe under StrictMode's double invocation.
+  const domainRef = useRef<{ key: string; lo: number; hi: number } | null>(null);
   const height = fixedHeight ?? measured;
 
   const showGhost = forecastsDiffer(forecast, ghost);
@@ -113,10 +117,18 @@ export function ForecastChart({
   });
 
   const thresholdL = toLakhs(forecast.threshold);
-  // Domain from live + last-healthy + what-if together: stable across scenes.
+  // Domain from live + last-healthy + what-if together, then widen-only across
+  // the session. The union alone was not enough: the last-healthy line moves
+  // after a recovery, and each new range let `niceScale` re-pick its step, so
+  // the axis jumped 70L → 60L → 50L between demo scenes.
   const samplesL = domainSamples(forecast, ghost, hypothetical).map(toLakhs);
-  const lo = samplesL.length > 0 ? Math.min(...samplesL) : thresholdL;
-  const hi = samplesL.length > 0 ? Math.max(...samplesL) : thresholdL;
+  const rawLo = samplesL.length > 0 ? Math.min(...samplesL) : thresholdL;
+  const rawHi = samplesL.length > 0 ? Math.max(...samplesL) : thresholdL;
+  const domainKey = `${forecast.threshold}:${forecast.weeks.length}`;
+  const prevDomain = domainRef.current?.key === domainKey ? domainRef.current : null;
+  const lo = Math.min(rawLo, prevDomain?.lo ?? rawLo);
+  const hi = Math.max(rawHi, prevDomain?.hi ?? rawHi);
+  domainRef.current = { key: domainKey, lo, hi };
   const pad = Math.max(1.5, (hi - lo) * 0.15);
   // No clamp at zero: cash genuinely can go negative under a stress scenario,
   // and clipping it drew the line straight over the X-axis labels.
@@ -579,7 +591,3 @@ function ForecastTooltip(props: TooltipProps<number, string>) {
   );
 }
 
-function clamp01(n: number): number {
-  if (Number.isNaN(n)) return 0.5;
-  return Math.min(1, Math.max(0, n));
-}

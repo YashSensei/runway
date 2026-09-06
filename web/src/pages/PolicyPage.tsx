@@ -17,7 +17,6 @@ import {
   policyImpact,
   ruleFailures,
   rulesPatch,
-  useWide,
 } from "../lib/spendHelpers";
 import type { PageProps } from "./types";
 
@@ -120,7 +119,6 @@ function parseDraft(d: Draft): { rules: CfoRules | null; problems: string[] } {
 export default function PolicyPage(props: PageProps) {
   const { state, openDecision } = props;
   const current = state.company.rules;
-  const wide = useWide(1400);
 
   const [draft, setDraft] = useState<Draft>(() => draftFrom(current));
   const [baseline, setBaseline] = useState<CfoRules>(current);
@@ -173,14 +171,7 @@ export default function PolicyPage(props: PageProps) {
   }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: wide ? "minmax(0, 7fr) minmax(0, 5fr)" : "minmax(0, 1fr)",
-        gap: "var(--gap)",
-        alignItems: "start",
-      }}
-    >
+    <div className="page page-cols-7-5">
       <div className="stack" style={{ minWidth: 0 }}>
         <Panel
           title="Rules"

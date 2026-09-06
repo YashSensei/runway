@@ -30,24 +30,15 @@ import {
   latestPerRequest,
   parseRupees,
   preCheck,
-  useWide,
   vendorWindowSpend,
 } from "../lib/spendHelpers";
 import type { PageProps } from "./types";
 
 export default function SpendPage(props: PageProps) {
   const { state, openDecision } = props;
-  const wide = useWide(1400);
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: wide ? "minmax(0, 7fr) minmax(0, 5fr)" : "minmax(0, 1fr)",
-        gap: "var(--gap)",
-        alignItems: "start",
-      }}
-    >
+    <div className="page page-cols-7-5">
       <div className="stack" style={{ minWidth: 0 }}>
         {state.escalations.length > 0 ? (
           <EscalationWorkspace

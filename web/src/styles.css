@@ -206,11 +206,6 @@ button:disabled {
   padding-bottom: var(--pad);
 }
 
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-}
 
 /* --- Rail ------------------------------------------------------------------ */
 
@@ -541,9 +536,6 @@ button:disabled {
 .board-escalating .cell-ledger > .panel-auto {
   max-height: none;
 }
-.board-escalating .esc-actions {
-  grid-template-columns: repeat(4, minmax(120px, 1fr));
-}
 
 .cell {
   min-width: 0;
@@ -551,13 +543,17 @@ button:disabled {
 }
 
 /* Row D */
+/* Row D has a floor, not a ceiling: the authority panel's natural height sets
+   the row when it needs more, and the chart (measured from its wrapper) fills
+   whatever the row becomes. Row E stays fixed because its panels are
+   unbounded scroll lists. */
 .cell-chart {
   grid-column: 1 / span 8;
-  height: var(--row-d);
+  min-height: var(--row-d);
 }
 .cell-authority {
   grid-column: 9 / span 4;
-  height: var(--row-d);
+  min-height: var(--row-d);
 }
 
 /* Row E */
@@ -609,7 +605,9 @@ button:disabled {
 /* ~1280 projector: three operational columns become two, and the ledger
    pair drops to its own row side by side. The chart keeps 8/4 with the
    policy panel; at 1240px board width that is still 400px for the policy. */
-@media (max-width: 1400px) {
+/* Under 1500px the review column at 3/12 cannot hold the decisions table, so
+   Row E becomes two halves and the ledger pair drops to its own row. */
+@media (max-width: 1500px) {
   .cell-activity {
     grid-column: 1 / span 6;
   }
@@ -1451,14 +1449,17 @@ button.tbl-row:focus-visible {
 
 /* Explicit widths: time, department, amount, outcome, reason. The amount
    column is sized for "₹12.4L" so the header can never sit on top of it. */
+/* time · department · amount · outcome · reason. The middle columns are
+   allowed to shrink so the header never overlaps itself in a narrow cell. */
 .dec-row {
-  grid-template-columns: 62px minmax(84px, 1fr) 68px 92px minmax(0, 1.4fr);
+  grid-template-columns: 52px minmax(0, 1fr) minmax(56px, auto) auto minmax(0, 1.4fr);
+  gap: 8px;
   font-size: var(--fs-2);
 }
 
 @media (max-width: 1500px) {
   .dec-row {
-    grid-template-columns: 62px minmax(84px, 1fr) 68px 92px;
+    grid-template-columns: 52px minmax(0, 1fr) minmax(56px, auto) auto;
   }
   .dec-row > :nth-child(5) {
     display: none;
@@ -3250,16 +3251,19 @@ select {
 }
 
 /* --- Page grids ---------------------------------------------------------- */
+/* Every operator page is a grid of panels. `.shell-main` already pads, so the
+   page itself never does. */
 .page {
   display: grid;
-  gap: 12px;
-  padding: 20px;
+  gap: var(--gap);
+  align-content: start;
+  min-width: 0;
 }
 .page-cols-7-5,
 .page-cols-8-4,
 .page-cols-5-7 {
   display: grid;
-  gap: 12px;
+  gap: var(--gap);
   align-items: start;
 }
 .page-cols-7-5 {

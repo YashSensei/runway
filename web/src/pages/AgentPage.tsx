@@ -12,24 +12,16 @@ import type { AgentRun, CollectionPlan } from "@shared/types";
 import { setAutonomy } from "../api";
 import { clock, lakh, plural, rupees, stamp, weekLabel } from "../format";
 import { Empty, Panel } from "../components/Panel";
-import { clamp01, duration, useNow, useWide } from "../lib/spendHelpers";
+import { clamp01, duration, useNow } from "../lib/spendHelpers";
 import type { PageProps } from "./types";
 
 const RUN_ROW_CAP = 40;
 
 export default function AgentPage(props: PageProps) {
   const { state } = props;
-  const wide = useWide(1400);
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: wide ? "minmax(0, 5fr) minmax(0, 7fr)" : "minmax(0, 1fr)",
-        gap: "var(--gap)",
-        alignItems: "start",
-      }}
-    >
+    <div className="page page-cols-5-7">
       <div className="stack" style={{ minWidth: 0 }}>
         <AutonomySwitch {...props} />
         <Heartbeat {...props} />

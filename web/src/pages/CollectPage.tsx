@@ -288,7 +288,7 @@ export default function CollectPage(props: PageProps) {
   }, [activity, replyResult]);
 
   return (
-    <div style={{ display: "grid", gap: "var(--gap)", gridColumn: "1 / -1", minWidth: 0 }}>
+    <div className="page">
       {/* 1. Ageing header */}
       <div className="stats" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
         {tiles.map((t) => (

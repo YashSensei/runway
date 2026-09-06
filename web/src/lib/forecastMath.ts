@@ -449,3 +449,9 @@ export function forecastsDiffer(a: Forecast, b: Forecast | null): boolean {
   }
   return false;
 }
+
+/** Clamp to [0, 1]. NaN collapses to 0 so a bad ratio never paints a full bar. */
+export function clamp01(n: number): number {
+  if (Number.isNaN(n)) return 0;
+  return Math.min(1, Math.max(0, n));
+}

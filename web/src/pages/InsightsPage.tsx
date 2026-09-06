@@ -52,7 +52,7 @@ export default function InsightsPage(props: PageProps) {
 
   if (replay === null) {
     return (
-      <div style={{ display: "grid", gap: "var(--gap)", gridColumn: "1 / -1", minWidth: 0 }}>
+      <div className="page">
         <Panel title="Counterfactual replay" right={runButton}>
           <p className="replay-caption">{CAPTION}</p>
           <p className="replay-note" style={{ marginTop: 8, maxWidth: "80ch" }}>
@@ -154,7 +154,7 @@ function ReplayView({
     : "—";
 
   return (
-    <div style={{ display: "grid", gap: "var(--gap)", gridColumn: "1 / -1", minWidth: 0 }}>
+    <div className="page">
       {/* 1. Headline figures */}
       <Panel
         title="Counterfactual replay"
