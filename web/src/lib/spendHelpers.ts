@@ -8,7 +8,7 @@
  * side-effect free so it can be called on every render.
  */
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import type {
   CfoRules,
   DashboardState,
@@ -462,33 +462,6 @@ export function rulesPatch(current: CfoRules, proposed: CfoRules): Partial<CfoRu
 // ---------------------------------------------------------------------------
 // Small shared bits
 // ---------------------------------------------------------------------------
-
-/**
- * `styles.css` has no form-control class, so the three pages share one inline
- * definition. Colours come from the theme variables only.
- */
-export const FIELD_STYLE: CSSProperties = {
-  width: "100%",
-  boxSizing: "border-box",
-  background: "var(--bg-inset)",
-  border: "1px solid var(--line-strong)",
-  borderRadius: 3,
-  color: "var(--text)",
-  fontFamily: "var(--mono)",
-  fontSize: 12.5,
-  padding: "6px 8px",
-  outline: "none",
-};
-
-export const FIELD_LABEL_STYLE: CSSProperties = {
-  display: "block",
-  fontFamily: "var(--mono)",
-  fontSize: 10,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: "var(--text-3)",
-  marginBottom: 4,
-};
 
 /** True at or above the two-column breakpoint the board uses. */
 export function useWide(minWidth = 1400): boolean {

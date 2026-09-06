@@ -171,10 +171,8 @@ export function Shell({
 
       <div className="shell-main">
         <header className="topbar">
-          <div className="brand">
-            <span className="brand-mark">Runway</span>
-            <span className="brand-sub">Autonomous CFO</span>
-          </div>
+          {/* The rail carries the wordmark; the topbar names where you are. */}
+          <h1 className="topbar-page">{LABELS[page]}</h1>
 
           <div className="topbar-spacer" />
 

@@ -13,7 +13,6 @@ import { updateRules } from "../api";
 import { clock, lakh, percent, plural, ruleLabel, weekLabel } from "../format";
 import { Empty, Panel } from "../components/Panel";
 import {
-  FIELD_STYLE,
   parseRupees,
   policyImpact,
   ruleFailures,
@@ -528,14 +527,8 @@ function RupeeInput({
         inputMode="numeric"
         aria-label={label}
         aria-invalid={parsed === null}
-        style={{
-          ...FIELD_STYLE,
-          width: 118,
-          display: "inline-block",
-          padding: "3px 7px",
-          fontSize: 13.5,
-          borderColor: parsed === null ? "var(--danger-line)" : "var(--line-strong)",
-        }}
+        className="field field-inline"
+        style={{ width: 118 }}
       />
       <span className="mono" style={{ color: "var(--text-3)", fontSize: 11.5 }}>
         {parsed === null ? "?" : lakh(parsed)}
@@ -566,15 +559,8 @@ function SmallInput({
       inputMode="decimal"
       aria-label={label}
       aria-invalid={bad}
-      style={{
-        ...FIELD_STYLE,
-        width,
-        display: "inline-block",
-        padding: "3px 7px",
-        fontSize: 13.5,
-        textAlign: "right",
-        borderColor: bad ? "var(--danger-line)" : "var(--line-strong)",
-      }}
+      className="field field-inline"
+      style={{ width }}
     />
   );
 }

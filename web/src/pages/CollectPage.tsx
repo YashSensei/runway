@@ -9,7 +9,7 @@
  */
 
 import { useMemo, useRef, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { ActivityEntry, CollectionPlan, Invoice, ISODate, SentEmail } from "@shared/types";
 import { chaseInvoice, injectReply } from "../api";
 import { Empty, Panel } from "../components/Panel";
@@ -68,28 +68,6 @@ const TABLE_COLS =
 const PLAN_COLS = "28px 90px minmax(120px, 1.1fr) 84px 72px 84px 128px 60px minmax(200px, 2fr)";
 const SKIP_COLS = "90px minmax(120px, 1fr) minmax(200px, 3fr)";
 const CUSTOMER_COLS = "minmax(160px, 1.4fr) 84px 96px 100px 84px 110px";
-
-const inputStyle: CSSProperties = {
-  background: "var(--bg-inset)",
-  border: "1px solid var(--line-strong)",
-  color: "var(--text)",
-  fontFamily: "var(--mono)",
-  fontSize: 12.5,
-  padding: "5px 8px",
-  borderRadius: 3,
-  width: "100%",
-  minWidth: 0,
-};
-
-const labelStyle: CSSProperties = {
-  fontFamily: "var(--mono)",
-  fontSize: 10.5,
-  letterSpacing: "0.14em",
-  textTransform: "uppercase",
-  color: "var(--text-3)",
-  display: "block",
-  marginBottom: 4,
-};
 
 export default function CollectPage(props: PageProps) {
   const { state } = props;
@@ -580,9 +558,9 @@ export default function CollectPage(props: PageProps) {
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
                 <label>
-                  <span style={labelStyle}>Invoice (chased first)</span>
+                  <span className="field-label">Invoice (chased first)</span>
                   <select
-                    style={inputStyle}
+                    className="field"
                     value={replyTarget?.inv.id ?? ""}
                     onChange={(e) => {
                       setReplyInvoiceId(e.target.value);
@@ -603,9 +581,9 @@ export default function CollectPage(props: PageProps) {
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <label>
-                    <span style={labelStyle}>Amount (₹, partial allowed)</span>
+                    <span className="field-label">Amount (₹, partial allowed)</span>
                     <input
-                      style={inputStyle}
+                      className="field"
                       type="number"
                       inputMode="numeric"
                       min={1}
@@ -619,9 +597,9 @@ export default function CollectPage(props: PageProps) {
                     />
                   </label>
                   <label>
-                    <span style={labelStyle}>Commit date</span>
+                    <span className="field-label">Commit date</span>
                     <input
-                      style={inputStyle}
+                      className="field"
                       type="date"
                       value={replyDate}
                       min={anchor}

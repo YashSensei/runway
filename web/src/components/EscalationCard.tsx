@@ -32,7 +32,7 @@ export function EscalationCard({
     <article className="esc">
       <header className="esc-head">
         <AlertIcon />
-        <span className="esc-head-title">CFO Review Required</span>
+        <span className="esc-head-title">CFO review required</span>
         <span className="esc-head-time">{clock(decision.createdAt)}</span>
       </header>
 

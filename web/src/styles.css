@@ -3323,3 +3323,737 @@ select {
   border-radius: var(--radius-sm);
   padding: 12px 14px;
 }
+
+/* ==========================================================================
+   Recipes — the one chrome every component shares
+   --------------------------------------------------------------------------
+   Each recipe is written once and grouped with the legacy class names it
+   replaces, so no call site had to change for the board to become coherent.
+   The legacy blocks above are deleted once every call site uses the new
+   name. Source order is what makes these win: same specificity, later rule.
+   ========================================================================== */
+
+/* ---- Panel --------------------------------------------------------------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.panel-head {
+  min-height: var(--head-h);
+  padding: 0 var(--pad);
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-title {
+  font-size: var(--fs-2);
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.panel-right {
+  gap: 10px;
+}
+
+.panel-body {
+  padding: var(--pad);
+}
+
+.panel-body-flush {
+  padding: 0;
+}
+
+.panel-body-esc {
+  padding: 12px;
+}
+
+.panel-strip .panel-head {
+  border-bottom: none;
+  min-height: var(--head-h);
+}
+
+/* Tiers are expressed through the title alone. Hero gets the brightest
+   title; reference recedes and drops its header chips. No coloured borders. */
+.panel-hero {
+  border-color: var(--border);
+}
+
+.panel-hero .panel-title {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.panel-primary .panel-title {
+  color: var(--text);
+}
+
+.panel-reference .panel-title {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.panel-reference .panel-head :is(.chip, .badge, .outcome, .log-chip, .chip-row) {
+  display: none;
+}
+
+.empty {
+  padding: 0 var(--pad);
+}
+
+/* ---- Chip ---------------------------------------------------------------- */
+
+.chip,
+.badge,
+.log-chip,
+.outcome,
+.tag-agent,
+.tag-human,
+.filter-chip,
+.rule-sev,
+.wk-flag,
+.res-held {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-1);
+  font-weight: 500;
+  line-height: 1;
+  background: var(--surface-2);
+  color: var(--text-2);
+  white-space: nowrap;
+  flex: none;
+  vertical-align: middle;
+}
+
+.chip-ok,
+.badge-ok,
+.badge-live,
+.log-chip-ok,
+.outcome-APPROVED {
+  color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.chip-warn,
+.badge-mock,
+.log-chip-warn,
+.outcome-ESCALATED,
+.chip-override {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.chip-danger,
+.badge-danger,
+.log-chip-danger,
+.outcome-REJECTED,
+.wk-flag {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.chip-accent,
+.badge-agent,
+.log-chip-agent,
+.tag-agent,
+.filter-chip-on,
+.res-held {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.chip-btn,
+.filter-chip {
+  cursor: pointer;
+}
+
+.chip-btn:hover,
+.filter-chip:hover {
+  color: var(--text);
+  border: 0;
+}
+
+.dot-pulse {
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+/* ---- Button -------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-2);
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 0;
+  /* Labels never truncate; the containing grid wraps instead. */
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--text-3);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: none;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--bg);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: transparent;
+  filter: brightness(1.08);
+}
+
+.btn-approve:not(:disabled) {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: transparent;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background: var(--ok-soft);
+  border-color: var(--ok);
+}
+
+.btn-reject:not(:disabled) {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: transparent;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
+.btn-why:not(:disabled) {
+  color: var(--accent);
+  background: transparent;
+  border-color: var(--border);
+}
+
+.btn-why:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-2);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: transparent;
+}
+
+.btn-sm {
+  height: 26px;
+  padding: 0 8px;
+  font-size: var(--fs-1);
+}
+
+.btn-pending,
+.btn-pending:disabled {
+  opacity: 0.6;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border-color: var(--border);
+  font-size: var(--fs-2);
+  padding: 0 12px;
+  cursor: progress;
+}
+
+.link-btn {
+  font-size: var(--fs-1);
+  color: var(--accent);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.link-btn:hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.demo-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--text-3);
+  background: var(--surface-2);
+}
+
+.switch {
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.switch[aria-checked="true"] {
+  /* A product state, not a verdict: the accent, never the semantic green. */
+  background: var(--accent);
+}
+
+/* ---- Table and list rows ------------------------------------------------- */
+
+.tbl-head,
+.tbl-row {
+  gap: 12px;
+  padding: 6px var(--pad);
+  min-height: var(--row-h);
+  border-bottom: 1px solid var(--border);
+}
+
+.tbl-head {
+  min-height: 32px;
+  padding-top: 0;
+  padding-bottom: 0;
+  background: var(--surface);
+  font-size: var(--fs-1);
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.tbl-row:last-child {
+  border-bottom: 0;
+}
+
+button.tbl-row:hover,
+.tbl-row-clickable:hover,
+.log-row-clickable:hover {
+  background: var(--surface-2);
+}
+
+button.tbl-row:focus-visible,
+.tbl-row-clickable:focus-visible,
+.log-row-clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* The activity log is a table row too. Agent-ness is carried by the tag
+   chip, not by a coloured rail. */
+.log-row {
+  border-left: 0;
+  padding: 7px var(--pad);
+  min-height: var(--row-h);
+  border-bottom: 1px solid var(--border);
+}
+
+.log-row-agent {
+  background-image: none;
+}
+
+.log-row-agent.log-row-clickable:hover {
+  background-color: var(--surface-2);
+}
+
+.log-row-clickable:hover .log-open {
+  color: var(--text);
+}
+
+.inv-row-hero {
+  border-left: 0;
+  background-image: none;
+  padding-left: var(--pad);
+  font-weight: 500;
+}
+
+.ledger-row-override {
+  border-left: 0;
+}
+
+.wk-row-selected {
+  box-shadow: none;
+  background: var(--surface-2);
+}
+
+.kv-tight dd {
+  border-bottom-color: var(--border);
+}
+
+.rule {
+  border-bottom-color: var(--border);
+}
+
+.more-row {
+  padding: 8px var(--pad);
+}
+
+/* ---- Stat cards ---------------------------------------------------------- */
+
+.stat {
+  padding: 12px 16px;
+}
+
+.stat::before {
+  display: none;
+}
+
+.stat-label,
+.stat-suffix,
+.headroom-label {
+  font-weight: 500;
+}
+
+/* ---- Fields -------------------------------------------------------------- */
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea,
+.field,
+.input {
+  font: inherit;
+  font-size: var(--fs-2);
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  height: 32px;
+  padding: 0 10px;
+  width: 100%;
+  min-width: 0;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+textarea {
+  height: auto;
+  min-height: 64px;
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+:is(input, select, textarea, .field, .input):focus-visible,
+:is(input, select, textarea, .field, .input):focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+:is(input, select, textarea)[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.field-inline {
+  width: auto;
+  display: inline-block;
+  height: 28px;
+  padding: 0 8px;
+  text-align: right;
+}
+
+.field-label {
+  display: block;
+  font-size: var(--fs-1);
+  color: var(--text-3);
+  margin: 0 0 6px;
+}
+
+.whatif-label,
+.filter-label {
+  font-size: var(--fs-1);
+  color: var(--text-3);
+}
+
+/* ---- Notices and callouts ------------------------------------------------ */
+
+/* A notice is a quiet card; only its icon and title carry the tone. */
+.notice,
+.breach,
+.clear-banner,
+.clear-banner-recovered,
+.alert-bar,
+.alert-bar-danger,
+.alert-bar-warn,
+.inline-alert,
+.verdict,
+.verdict-ok,
+.verdict-warn,
+.verdict-danger,
+.override-box {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+}
+
+.notice-title,
+.breach-title,
+.alert-bar-title,
+.inline-alert-title,
+.verdict-title {
+  font-size: var(--fs-2);
+  font-weight: 500;
+}
+
+.breach-body {
+  font-size: var(--fs-2);
+  color: var(--text-2);
+}
+
+.breach-body .mono,
+.clear-banner-recovered .mono,
+.clear-banner b,
+.notice-body b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.breach-rule {
+  display: none;
+}
+
+.clear-banner > svg,
+.notice-ok .notice-icon {
+  color: var(--ok);
+  flex: none;
+}
+
+.override-box {
+  background: var(--surface-2);
+}
+
+.override-box .audit-section-title {
+  color: var(--text-2);
+}
+
+/* A callout is an inset paragraph: the agent's words, a principle, a quote. */
+.callout,
+.principle,
+.esc-narration,
+.narration-box,
+.inset {
+  border: 0;
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  color: var(--text);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.esc-narration-src,
+.callout-src {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--fs-1);
+  color: var(--text-3);
+}
+
+/* ---- Escalation card ----------------------------------------------------- */
+
+.esc {
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.esc-head {
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.esc-head svg {
+  color: var(--danger);
+}
+
+.esc-head-title {
+  font-size: var(--fs-2);
+  font-weight: 500;
+}
+
+/* Buttons wrap two-by-two in a narrow column instead of truncating. */
+.esc-actions,
+.board-escalating .esc-actions {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface);
+}
+
+/* ---- Rail and topbar ----------------------------------------------------- */
+
+.rail {
+  background: var(--surface);
+  border-right-color: var(--border);
+  padding: 12px 10px;
+}
+
+.rail-brand {
+  font-weight: 600;
+}
+
+.rail-mark {
+  background: var(--accent);
+  border: 0;
+  color: var(--bg);
+  font-weight: 600;
+}
+
+.rail-item {
+  border-left: 0;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+}
+
+.rail-item-active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.rail-item:hover .rail-icon,
+.rail-item-active .rail-icon {
+  color: var(--text);
+}
+
+.rail-badge {
+  border: 0;
+  border-radius: 999px;
+  font-weight: 500;
+  background: var(--surface-2);
+  color: var(--text-2);
+}
+
+.rail-badge-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.rail-key {
+  border-color: var(--border);
+}
+
+.topbar {
+  border-bottom-color: var(--border);
+}
+
+.topbar-page {
+  font-size: var(--fs-3);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.brand-mark {
+  font-size: var(--fs-3);
+  font-weight: 600;
+}
+
+/* ---- Modal, demo panel, tooltip ------------------------------------------ */
+
+.modal {
+  background: var(--surface);
+  border-color: var(--border);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.modal-head {
+  padding: 12px 20px;
+  border-bottom-color: var(--border);
+}
+
+.modal-title {
+  font-size: var(--fs-2);
+  font-weight: 500;
+  color: var(--text);
+}
+
+.modal-close {
+  border-color: var(--border);
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.audit-section-title {
+  font-weight: 500;
+}
+
+.audit-outcome {
+  font-weight: 600;
+}
+
+.demo {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.demo-title {
+  font-weight: 500;
+}
+
+.tip {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- Bars and small figures ---------------------------------------------- */
+
+.hbar,
+.bar,
+.bar-lg {
+  height: 6px;
+  border: 0;
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+
+.hbar-fill,
+.bar-fill {
+  border-radius: 999px;
+}
+
+.hbar-fill {
+  background: var(--accent);
+}
+
+.state-change,
+.replay-figures {
+  background: var(--border);
+  border-color: var(--border);
+}
+
+.state-cell,
+.replay-fig {
+  background: var(--surface-2);
+}
+
+.replay-caption {
+  color: var(--text-3);
+}
+
+.fatal-detail {
+  border-color: var(--border);
+}

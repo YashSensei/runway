@@ -23,8 +23,6 @@ import { reevaluateRequest, resolveEscalation, submitRequest } from "../api";
 import { clock, lakh, percent, plural, reasonLabel, ruleLabel, rupees, shortDate } from "../format";
 import { Empty, Panel } from "../components/Panel";
 import {
-  FIELD_LABEL_STYLE,
-  FIELD_STYLE,
   agentApprovedViews,
   approvedForDepartment,
   clamp01,
@@ -245,7 +243,7 @@ function EscalationWorkCard({
           </div>
 
           <label style={{ display: "block", marginTop: 12 }}>
-            <span style={FIELD_LABEL_STYLE}>Note (optional, recorded on the decision)</span>
+            <span className="field-label">Note (optional, recorded on the decision)</span>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -253,7 +251,6 @@ function EscalationWorkCard({
               rows={2}
               maxLength={500}
               placeholder="Why you are overriding, deferring, or agreeing."
-              style={{ ...FIELD_STYLE, resize: "vertical", fontFamily: "var(--sans)" }}
             />
           </label>
 
@@ -743,7 +740,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
             value={departmentId}
             onChange={(e) => setDepartmentId(e.target.value)}
             disabled={pending || departments.length === 0}
-            style={FIELD_STYLE}
+            className="field"
           >
             {departments.length === 0 ? <option value="">No departments</option> : null}
             {departments.map((d) => (
@@ -770,7 +767,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
             value={vendorId}
             onChange={(e) => setVendorId(e.target.value)}
             disabled={pending || vendors.length === 0}
-            style={FIELD_STYLE}
+            className="field"
           >
             {vendors.length === 0 ? <option value="">No vendors</option> : null}
             {vendors.map((v) => (
@@ -792,7 +789,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
             disabled={pending}
             placeholder="e.g. infrastructure"
             maxLength={120}
-            style={FIELD_STYLE}
+            className="field"
           />
         </Field>
 
@@ -803,7 +800,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
             disabled={pending}
             inputMode="numeric"
             placeholder="450000"
-            style={FIELD_STYLE}
+            className="field"
           />
           {amount !== null ? (
             <div className="state-delta" style={{ marginTop: 3 }}>
@@ -821,7 +818,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
             value={week}
             onChange={(e) => setWeek(Number(e.target.value))}
             disabled={pending}
-            style={FIELD_STYLE}
+            className="field"
           >
             {weeks.map((w) => {
               const fw = state.forecast.weeks.find((x) => x.week === w);
@@ -843,7 +840,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
             disabled={pending}
             placeholder="name or email"
             maxLength={500}
-            style={FIELD_STYLE}
+            className="field"
           />
         </Field>
 
@@ -855,7 +852,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
               disabled={pending}
               placeholder="What the money is for"
               maxLength={500}
-              style={FIELD_STYLE}
+              className="field"
             />
           </Field>
         </div>
@@ -950,7 +947,7 @@ function SubmittedResult({
 function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <label style={{ display: "block", minWidth: 0 }}>
-      <span style={FIELD_LABEL_STYLE}>{label}</span>
+      <span className="field-label">{label}</span>
       {children}
     </label>
   );

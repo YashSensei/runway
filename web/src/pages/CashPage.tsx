@@ -81,7 +81,7 @@ export default function CashPage({ state }: PageProps) {
             <Panel
               title={`Why ${weekLabel(explanation.breachWeek)}?`}
               tier="primary"
-              className="panel-auto panel-breach"
+              className="panel-auto"
               right={
                 <span className="panel-note">
                   {lakh(explanation.drop)} drop from{" "}
@@ -134,7 +134,7 @@ export default function CashPage({ state }: PageProps) {
               <label className="whatif-field">
                 <span className="whatif-label">approve amount (₹ lakh)</span>
                 <input
-                  className="input mono"
+                  className="field"
                   inputMode="decimal"
                   placeholder="e.g. 4.5"
                   value={amountText}
@@ -145,7 +145,7 @@ export default function CashPage({ state }: PageProps) {
               <label className="whatif-field">
                 <span className="whatif-label">cash leaves in</span>
                 <select
-                  className="input mono"
+                  className="field"
                   value={week}
                   onChange={(e) => setWeek(Number(e.target.value) || 1)}
                   aria-label="Hypothetical week"
