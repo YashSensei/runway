@@ -12,6 +12,7 @@
 
 import type {
   CategoryStat,
+  Rupees,
   CfoRules,
   Decision,
   Department,
@@ -155,6 +156,38 @@ export function buildFallbackNarration(args: {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+/**
+ * The sentence that ties the two halves of the product together.
+ *
+ * When an approval only fits because the agent's own collection work raised
+ * the trough, say so — deterministically, from the recorded recovery. Without
+ * this the demo's central claim ("its own action changed its own decision")
+ * is something the presenter asserts instead of something the agent says.
+ */
+export function recoveryPreamble(args: {
+  outcome: Decision["outcome"];
+  amount: Rupees;
+  threshold: Rupees;
+  cleared: { recovered: Rupees; customers: string[]; before: Rupees; after: Rupees } | null;
+}): string | null {
+  const { outcome, amount, threshold, cleared } = args;
+  if (outcome !== "APPROVED" || !cleared) return null;
+
+  // Headroom as it stood before the commitments landed. If this request would
+  // not have fit inside it, the recovery is what made room.
+  const headroomBeforeRecovery = cleared.before - threshold;
+  if (amount <= headroomBeforeRecovery) return null;
+
+  const who =
+    cleared.customers.length === 0
+      ? "customers"
+      : cleared.customers.length === 1
+        ? cleared.customers[0]!
+        : `${cleared.customers.slice(0, -1).join(", ")} and ${cleared.customers[cleared.customers.length - 1]!}`;
+
+  return `This would have been escalated before the collection: the ${formatINR(cleared.recovered)} I recovered from ${who} raised projected minimum from ${formatINR(cleared.before)} to ${formatINR(cleared.after)}, which is what made room for it.`;
 }
 
 function buildDataUsed(ctx: RuleContext): string[] {

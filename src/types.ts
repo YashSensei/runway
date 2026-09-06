@@ -248,6 +248,12 @@ export interface Decision {
   /** Deterministic fallback, always present. Demo works with zero LLM access. */
   fallbackNarration: string;
   createdAt: ISODateTime;
+  /** Who produced this: the engine, or a CFO overriding an escalation. */
+  actor?: "agent" | "cfo";
+  /** CFO's note when overriding. Surfaces the divergence in the audit trail. */
+  note?: string;
+  /** Set when this decision re-evaluates an earlier one (deferred → re-run). */
+  supersedes?: string;
 }
 
 export interface Reservation {
@@ -334,6 +340,8 @@ export interface ReplayResult {
     request: HistoricalRequest;
     agentOutcome: DecisionOutcome;
     agreed: boolean;
+    /** Which rules failed, so disagreements can be attributed. */
+    failedRules: RuleId[];
   }>;
 }
 
@@ -416,12 +424,55 @@ export interface SentEmail {
   sentAt: ISODateTime;
 }
 
-/** Everything the single-screen UI renders. One poll, one payload. */
+/** One firing of the autonomous loop, including the quiet ones. */
+export interface AgentRun {
+  at: ISODateTime;
+  trigger: "alarm" | "manual";
+  projectedMinimum: Rupees;
+  headroom: Rupees;
+  breachWeek: number | null;
+  outcome: "healthy" | "chased" | "waiting_on_replies" | "no_targets" | "disabled" | "stale";
+  chased?: Rupees;
+}
+
+/** What the last cash defence recovered, kept so the banner can say so. */
+export interface BreachCleared {
+  at: ISODateTime;
+  recovered: Rupees;
+  customers: string[];
+  /** Projected minimum before the commitments landed. */
+  before: Rupees;
+  after: Rupees;
+}
+
+export interface AgentStatus {
+  autonomyEnabled: boolean;
+  nextAlarmAt: ISODateTime | null;
+  lastRunAt: ISODateTime | null;
+  intervalMs: number;
+  runs: AgentRun[];
+  emailProvider: string;
+  llmProvider: string;
+  guardrails: {
+    cooldownDays: number;
+    maxTargets: number;
+    coverageFactor: number;
+  };
+}
+
+/** Everything the UI renders. One poll, one payload, every page. */
 export interface DashboardState {
   company: Company;
+  /** The engine's "now". Frozen for the demo; exposed so ageing is honest. */
+  today: ISODate;
   forecast: Forecast;
+  /** Last forecast computed while no breach existed. Drawn as a ghost line. */
+  lastHealthyForecast: Forecast | null;
   departments: Department[];
+  vendors: Vendor[];
   invoices: Invoice[];
+  payables: Payable[];
+  reservations: Reservation[];
   activity: ActivityEntry[];
   decisions: DecisionView[];
   escalations: EscalationView[];
@@ -429,4 +480,8 @@ export interface DashboardState {
   /** Total currently reserved against headroom by approved-unpaid requests. */
   reservedTotal: Rupees;
   replay: ReplayResult | null;
+  agent: AgentStatus;
+  /** The ranked plan from the last defence — the judgement, not just the emails. */
+  lastCollectionPlan: CollectionPlan | null;
+  lastBreachCleared: BreachCleared | null;
 }

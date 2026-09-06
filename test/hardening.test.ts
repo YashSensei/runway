@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Regression tests for the findings of the adversarial review.
  *
  * Every case here corresponds to a bug that was actually reachable, most of
@@ -15,12 +15,12 @@ import {
   validateCommitment,
 } from "../src/engine/validation";
 import { toDayNumber, weekIndex } from "../src/engine/dates";
-import { buildForecast } from "../src/engine/forecast";
-import { decide } from "../src/engine/decision";
-import { resolveOutcome } from "../src/engine/decision";
+import { buildForecast, residualAmount } from "../src/engine/forecast";
+import { buildCollectionPlan, recordCommitment } from "../src/engine/collections";
+import { decide, resolveOutcome, recoveryPreamble } from "../src/engine/decision";
 import { noPriorCommitments, evaluateRules } from "../src/engine/rules";
 import { runReplay } from "../src/engine/replay";
-import { baseSeed, DEMO_REQUESTS, TODAY } from "../src/db/seed";
+import { baseSeed, applyShock, DEMO_REQUESTS, TODAY } from "../src/db/seed";
 import type { LedgerState, SpendRequest } from "../src/types";
 
 const L = (n: number): number => Math.round(n * 100_000);
@@ -360,5 +360,72 @@ describe("counterfactual replay", () => {
   it("accounts for every row it was given", () => {
     expect(result.rows).toHaveLength(state.historical.length);
     expect(result.agreed + result.rows.filter((r) => !r.agreed).length).toBe(result.total);
+  });
+
+  it("names the rules behind every disagreement", () => {
+    for (const row of result.rows) {
+      if (row.agreed) expect(row.failedRules).toHaveLength(0);
+      else expect(row.failedRules.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe("partial commitments keep the residual receivable", () => {
+  it("does not delete the uncommitted part of an invoice from the forecast", () => {
+    const state = applyShock(baseSeed());
+    const totalBefore = buildForecast(forecastInput(state)).weeks.reduce((s, w) => s + w.collections, 0);
+
+    // Acme promises ₹3L of a ₹9L invoice.
+    state.invoices = state.invoices.map((inv) =>
+      inv.id === "INV-2041" ? recordCommitment(inv, L(3), "2026-09-25") : inv,
+    );
+    const acme = state.invoices.find((i) => i.id === "INV-2041")!;
+    expect(residualAmount(acme)).toBe(L(6));
+
+    // Total expected collections are unchanged: ₹3L moved earlier, ₹6L stayed
+    // on the customer's normal timeline. Previously ₹6L simply vanished.
+    const totalAfter = buildForecast(forecastInput(state)).weeks.reduce((s, w) => s + w.collections, 0);
+    expect(totalAfter).toBe(totalBefore);
+
+    // And the residual is still chaseable — only a FULL commitment retires it.
+    const plan = buildCollectionPlan({
+      invoices: state.invoices,
+      forecast: buildForecast(forecastInput(state)),
+      company: state.company,
+      now: TODAY,
+    });
+    const retired = plan.skipped.find(
+      (s) => s.invoiceId === "INV-2041" && /already committed/.test(s.reason),
+    );
+    expect(retired).toBeUndefined();
+  });
+
+  it("caps a commitment at the invoice face value", () => {
+    const inv = baseSeed().invoices.find((i) => i.id === "INV-2041")!;
+    expect(recordCommitment(inv, L(50), "2026-09-25").committedAmount).toBe(L(9));
+  });
+});
+
+describe("recovery-aware narration", () => {
+  const cleared = {
+    recovered: L(15),
+    customers: ["Acme Retail Group", "Northwind Logistics"],
+    before: L(19.4),
+    after: L(34.4),
+  };
+
+  it("credits the collection when an approval only fits because of it", () => {
+    const text = recoveryPreamble({ outcome: "APPROVED", amount: L(4.5), threshold: L(25), cleared });
+    expect(text).toMatch(/would have been escalated/);
+    expect(text).toMatch(/₹15,00,000/);
+    expect(text).toMatch(/Acme Retail Group and Northwind Logistics/);
+    expect(text).toMatch(/₹19,40,000 to ₹34,40,000/);
+  });
+
+  it("stays silent when the request would have fit anyway, or nothing was recovered", () => {
+    const roomy = { ...cleared, before: L(40), after: L(55) };
+    expect(recoveryPreamble({ outcome: "APPROVED", amount: L(3), threshold: L(25), cleared: roomy })).toBeNull();
+    expect(recoveryPreamble({ outcome: "APPROVED", amount: L(3), threshold: L(25), cleared: null })).toBeNull();
+    expect(recoveryPreamble({ outcome: "ESCALATED", amount: L(3), threshold: L(25), cleared })).toBeNull();
   });
 });

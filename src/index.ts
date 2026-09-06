@@ -85,7 +85,37 @@ app.post("/api/escalations/:requestId/:action", async (c) => {
   if (action !== "approve" && action !== "reject" && action !== "defer") {
     return json({ error: "action must be approve, reject or defer" }, 400);
   }
-  const result = await agent(c.env).resolveEscalation(c.req.param("requestId"), action);
+  const body = await readJson(c.req.raw);
+  const note = body && typeof body === "object" && "note" in body ? String((body as { note: unknown }).note ?? "") : undefined;
+  const result = await agent(c.env).resolveEscalation(c.req.param("requestId"), action, note);
+  return result.ok ? json(result) : json(result, 409);
+});
+
+app.post("/api/requests/:requestId/reevaluate", async (c) => {
+  const result = await agent(c.env).reevaluate(c.req.param("requestId"));
+  return result.ok ? json(result) : json(result, 409);
+});
+
+// ---------------------------------------------------------------------------
+// Operator controls
+// ---------------------------------------------------------------------------
+
+app.post("/api/agent/autonomy", async (c) => {
+  const body = await readJson(c.req.raw);
+  const enabled = body && typeof body === "object" && "enabled" in body ? (body as { enabled: unknown }).enabled : undefined;
+  if (typeof enabled !== "boolean") return json({ error: "body must be { enabled: boolean }" }, 400);
+  return json(await agent(c.env).setAutonomy(enabled));
+});
+
+app.put("/api/rules", async (c) => {
+  const body = await readJson(c.req.raw);
+  if (body === INVALID || body === null) return json({ error: "Body must be a JSON object of rule fields" }, 400);
+  const result = await agent(c.env).updateRules(body as never);
+  return result.ok ? json(result) : json(result, 400);
+});
+
+app.post("/api/invoices/:invoiceId/chase", async (c) => {
+  const result = await agent(c.env).chaseInvoice(c.req.param("invoiceId"));
   return result.ok ? json(result) : json(result, 409);
 });
 

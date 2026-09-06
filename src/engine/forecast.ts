@@ -55,6 +55,59 @@ export function expectedCollectionAmount(invoice: Invoice): Rupees {
   return invoice.amount;
 }
 
+/**
+ * The part of a committed invoice the customer did NOT commit to.
+ *
+ * A promise of ₹3L against a ₹9L invoice is not a ₹6L write-off. The residual
+ * is still owed, still expected on the customer's normal timeline, and still
+ * chaseable. Dropping it silently deleted live receivables from the forecast.
+ */
+export function residualAmount(invoice: Invoice): Rupees {
+  if (invoice.status !== "committed" || invoice.committedAmount === undefined) return 0;
+  return Math.max(0, invoice.amount - invoice.committedAmount);
+}
+
+/** Where the uncommitted residual lands: the customer's historical timeline. */
+export function residualCollectionDate(invoice: Invoice): ISODate {
+  return addDays(invoice.dueDate, invoice.customerAvgLagDays);
+}
+
+/** A single dated inflow, for week drill-downs. */
+export interface ExpectedInflow {
+  invoiceId: string;
+  customer: string;
+  amount: Rupees;
+  date: ISODate;
+  kind: "expected" | "committed" | "residual";
+}
+
+/** Every inflow the forecast will count, with its date. */
+export function expectedInflows(invoices: Invoice[]): ExpectedInflow[] {
+  const out: ExpectedInflow[] = [];
+  for (const invoice of invoices) {
+    const date = expectedCollectionDate(invoice);
+    if (date === null) continue;
+    out.push({
+      invoiceId: invoice.id,
+      customer: invoice.customer,
+      amount: expectedCollectionAmount(invoice),
+      date,
+      kind: invoice.status === "committed" ? "committed" : "expected",
+    });
+    const residual = residualAmount(invoice);
+    if (residual > 0) {
+      out.push({
+        invoiceId: invoice.id,
+        customer: invoice.customer,
+        amount: residual,
+        date: residualCollectionDate(invoice),
+        kind: "residual",
+      });
+    }
+  }
+  return out;
+}
+
 export function buildForecast(input: ForecastInput): Forecast {
   const { company, invoices, payables, recurring, reservations } = input;
   const horizon = company.forecastHorizonWeeks;
@@ -73,12 +126,10 @@ export function buildForecast(input: ForecastInput): Forecast {
   };
 
   // --- Inflows -------------------------------------------------------------
-  for (const invoice of invoices) {
-    const date = expectedCollectionDate(invoice);
-    if (date === null) continue;
-    const week = weekIndex(anchor, date, horizon);
+  for (const inflow of expectedInflows(invoices)) {
+    const week = weekIndex(anchor, inflow.date, horizon);
     if (week === null) continue; // Lands beyond the horizon: no help to us.
-    bump(collections, week, expectedCollectionAmount(invoice));
+    bump(collections, week, inflow.amount);
   }
 
   // --- Dated outflows ------------------------------------------------------

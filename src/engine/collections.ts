@@ -17,6 +17,7 @@ import type {
   Rupees,
 } from "../types";
 import { addDays, daysOverdue as computeDaysOverdue, weekIndex } from "./dates";
+import { residualAmount } from "./forecast";
 
 export interface CollectionPlanInput {
   invoices: Invoice[];
@@ -30,7 +31,8 @@ export interface CollectionPlanInput {
   coverageFactor?: number;
 }
 
-const DEFAULTS = {
+/** Exported so the operator console can show the guardrails, not just imply them. */
+export const COLLECTION_DEFAULTS = {
   cooldownDays: 7,
   maxTargets: 3,
   // Chase twice the shortfall. Roughly half of chased invoices produce a firm
@@ -50,6 +52,11 @@ export function chaseResponseDays(invoice: Invoice): number {
   return Math.min(21, Math.max(5, compressed));
 }
 
+/** What a chase could actually recover: the whole invoice, or the uncommitted part. */
+export function chaseableAmount(invoice: Invoice): Rupees {
+  return invoice.status === "committed" ? residualAmount(invoice) : invoice.amount;
+}
+
 function scoreCandidate(args: {
   invoice: Invoice;
   daysOverdue: number;
@@ -59,7 +66,7 @@ function scoreCandidate(args: {
   const { invoice, daysOverdue, landsBeforeBreach, maxAmount } = args;
 
   const timing = landsBeforeBreach ? 1 : 0;
-  const size = maxAmount > 0 ? invoice.amount / maxAmount : 0;
+  const size = maxAmount > 0 ? chaseableAmount(invoice) / maxAmount : 0;
   const age = Math.min(daysOverdue / 90, 1);
   const reliability = 1 - Math.min(invoice.customerAvgLagDays / 60, 1);
 
@@ -76,10 +83,44 @@ function scoreCandidate(args: {
   return { score, rationale: parts.join("; ") };
 }
 
+/**
+ * Describe one invoice as a chase candidate against the current forecast.
+ *
+ * Used by the plan for ranking, and by the CFO's manual "chase now" so the
+ * email carries the same overdue/arrival reasoning the agent would have used.
+ */
+export function candidateFor(
+  invoice: Invoice,
+  forecast: Forecast,
+  company: Company,
+  now: ISODate,
+  maxAmount: Rupees = chaseableAmount(invoice),
+): CollectionCandidate {
+  const overdue = computeDaysOverdue(invoice.dueDate, now);
+  const arrival = addDays(now, chaseResponseDays(invoice));
+  const arrivalWeek = weekIndex(company.anchorDate, arrival, company.forecastHorizonWeeks);
+  const landsBeforeBreach =
+    forecast.breachWeek !== null && arrivalWeek !== null && arrivalWeek <= forecast.breachWeek;
+  const { score, rationale } = scoreCandidate({
+    invoice,
+    daysOverdue: overdue,
+    landsBeforeBreach,
+    maxAmount,
+  });
+  return {
+    invoice,
+    daysOverdue: overdue,
+    expectedArrivalWeek: arrivalWeek ?? company.forecastHorizonWeeks + 1,
+    landsBeforeBreach,
+    score,
+    rationale,
+  };
+}
+
 export function buildCollectionPlan(input: CollectionPlanInput): CollectionPlan {
-  const cooldownDays = input.cooldownDays ?? DEFAULTS.cooldownDays;
-  const maxTargets = input.maxTargets ?? DEFAULTS.maxTargets;
-  const coverageFactor = input.coverageFactor ?? DEFAULTS.coverageFactor;
+  const cooldownDays = input.cooldownDays ?? COLLECTION_DEFAULTS.cooldownDays;
+  const maxTargets = input.maxTargets ?? COLLECTION_DEFAULTS.maxTargets;
+  const coverageFactor = input.coverageFactor ?? COLLECTION_DEFAULTS.coverageFactor;
 
   const { forecast, company, now } = input;
   const gap = forecast.breachGap;
@@ -94,7 +135,9 @@ export function buildCollectionPlan(input: CollectionPlanInput): CollectionPlan 
   const eligible: Invoice[] = [];
   for (const invoice of input.invoices) {
     if (invoice.status === "paid") continue;
-    if (invoice.status === "committed") {
+    // A partial commitment leaves a residual that is still owed and still
+    // chaseable. Only a full commitment takes the invoice off the table.
+    if (invoice.status === "committed" && residualAmount(invoice) === 0) {
       skipped.push({ invoiceId: invoice.id, reason: "Customer has already committed to a date." });
       continue;
     }
@@ -122,52 +165,41 @@ export function buildCollectionPlan(input: CollectionPlanInput): CollectionPlan 
     eligible.push(invoice);
   }
 
-  const maxAmount = eligible.reduce((max, inv) => Math.max(max, inv.amount), 0);
+  const maxAmount = eligible.reduce((max, inv) => Math.max(max, chaseableAmount(inv)), 0);
+  const candidates = eligible.map((invoice) =>
+    candidateFor(invoice, forecast, company, now, maxAmount),
+  );
 
-  const candidates: CollectionCandidate[] = eligible.map((invoice) => {
-    const overdue = computeDaysOverdue(invoice.dueDate, now);
-    const arrival = addDays(now, chaseResponseDays(invoice));
-    const arrivalWeek = weekIndex(company.anchorDate, arrival, company.forecastHorizonWeeks);
-    const landsBeforeBreach = arrivalWeek !== null && arrivalWeek <= forecast.breachWeek!;
-    const { score, rationale } = scoreCandidate({
-      invoice,
-      daysOverdue: overdue,
-      landsBeforeBreach,
-      maxAmount,
-    });
-
-    return {
-      invoice,
-      daysOverdue: overdue,
-      expectedArrivalWeek: arrivalWeek ?? company.forecastHorizonWeeks + 1,
-      landsBeforeBreach,
-      score,
-      rationale,
-    };
-  });
-
-  candidates.sort((a, b) => b.score - a.score || b.invoice.amount - a.invoice.amount);
+  candidates.sort(
+    (a, b) => b.score - a.score || chaseableAmount(b.invoice) - chaseableAmount(a.invoice),
+  );
 
   // Chase more than the gap — some customers will not pay, and stopping exactly
   // at the shortfall leaves no margin for that.
   const target = gap * coverageFactor;
   const selected: CollectionCandidate[] = [];
   let total = 0;
+  let cappedByCount = false;
 
   for (const candidate of candidates) {
-    if (selected.length >= maxTargets) break;
+    if (selected.length >= maxTargets) {
+      cappedByCount = true;
+      break;
+    }
     if (total >= target) break;
     selected.push(candidate);
-    total += candidate.invoice.amount;
+    total += chaseableAmount(candidate.invoice);
   }
 
   for (const candidate of candidates) {
     if (selected.includes(candidate)) continue;
     skipped.push({
       invoiceId: candidate.invoice.id,
-      reason: candidate.landsBeforeBreach
-        ? "Shortfall already covered by higher-priority invoices."
-        : `Would not arrive until week ${candidate.expectedArrivalWeek}, after the week ${forecast.breachWeek} shortfall.`,
+      reason: !candidate.landsBeforeBreach
+        ? `Would not arrive until week ${candidate.expectedArrivalWeek}, after the week ${forecast.breachWeek} shortfall.`
+        : cappedByCount && total < target
+          ? `Held back — at most ${maxTargets} accounts are chased per run.`
+          : "Shortfall already covered by higher-priority invoices.",
     });
   }
 
@@ -189,7 +221,7 @@ export function recordCommitment(
   return {
     ...invoice,
     status: "committed",
-    committedAmount,
+    committedAmount: Math.min(committedAmount, invoice.amount),
     committedDate,
   };
 }

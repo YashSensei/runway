@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CompanyAgent — the autonomous operator.
  *
  * One instance per company. Everything that touches the cash position goes
@@ -18,7 +18,12 @@ import { DurableObject } from "cloudflare:workers";
 import type {
   ActivityEntry,
   ActivityType,
+  AgentRun,
+  BreachCleared,
+  CfoRules,
+  CollectionPlan,
   DashboardState,
+  Forecast,
   Decision,
   DecisionView,
   EscalationView,
@@ -30,8 +35,15 @@ import type {
   SpendRequest,
 } from "../types";
 import { buildForecast, type ForecastInput } from "../engine/forecast";
-import { decide } from "../engine/decision";
-import { buildCollectionPlan, markChased, recordCommitment } from "../engine/collections";
+import { decide, recoveryPreamble } from "../engine/decision";
+import {
+  buildCollectionPlan,
+  candidateFor,
+  chaseableAmount,
+  COLLECTION_DEFAULTS,
+  markChased,
+  recordCommitment,
+} from "../engine/collections";
 import { runReplay } from "../engine/replay";
 import type { PriorCommitments } from "../engine/rules";
 import {
@@ -40,6 +52,7 @@ import {
   type SpendRequestInput,
 } from "../engine/validation";
 import { baseSeed, applyShock, DEMO_REQUESTS, TODAY } from "../db/seed";
+import { validateAmount } from "../engine/validation";
 import { buildCollectionEmail, createEmailAdapter } from "../adapters/email";
 import {
   createLLMAdapter,
@@ -63,7 +76,16 @@ interface PersistedState extends LedgerState {
   lastBreachWeek?: number | null;
   /** Bumped on every commit; lets long-running work detect it went stale. */
   generation?: number;
+  /** Every firing of the loop, including quiet ones. The heartbeat. */
+  runs?: AgentRun[];
+  /** The ranked plan from the last defence: the judgement, not just the emails. */
+  lastCollectionPlan?: CollectionPlan | null;
+  lastBreachCleared?: BreachCleared | null;
+  /** Last forecast computed while healthy; the ghost line under the live one. */
+  lastHealthyForecast?: Forecast | null;
 }
+
+const MAX_RUNS = 120;
 
 /** Newest-first caps. The whole ledger is one storage value; it cannot grow forever. */
 const MAX_ACTIVITY = 400;
@@ -75,6 +97,9 @@ function trimHistory(state: PersistedState): void {
   }
   if (state.emails.length > MAX_EMAILS) {
     state.emails = state.emails.slice(-MAX_EMAILS);
+  }
+  if (state.runs && state.runs.length > MAX_RUNS) {
+    state.runs = state.runs.slice(-MAX_RUNS);
   }
 }
 
@@ -197,6 +222,11 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
     return { departmentWindowTotal, vendorWindowTotal, windowDays };
   }
 
+  /** Append to the heartbeat log. Every firing, including the quiet ones. */
+  private recordRun(state: PersistedState, run: Omit<AgentRun, "at">): void {
+    state.runs = [...(state.runs ?? []), { ...run, at: new Date().toISOString() }];
+  }
+
   private log(
     state: PersistedState,
     type: ActivityType,
@@ -247,15 +277,27 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
     breachWeek: number | null;
   }> {
     const state = await this.load();
-    if (!state.autonomyEnabled) return { acted: false, chased: 0, breachWeek: null };
-
     const forecast = buildForecast(this.forecastInput(state));
+    const runBase = {
+      trigger: opts.triggeredBy,
+      projectedMinimum: forecast.projectedMinimum,
+      headroom: forecast.headroom,
+      breachWeek: forecast.breachWeek,
+    } as const;
+
+    if (!state.autonomyEnabled) {
+      await this.mutate((draft) => this.recordRun(draft, { ...runBase, outcome: "disabled" }));
+      return { acted: false, chased: 0, breachWeek: forecast.breachWeek };
+    }
 
     if (forecast.breachWeek === null) {
-      // Healthy. Only record the check on manual runs — an idle agent should
-      // not fill the log with "nothing to do" every twenty seconds.
-      if (opts.triggeredBy === "manual") {
-        await this.mutate((draft) => {
+      // Healthy. The heartbeat records the check; the activity feed does not,
+      // because an idle agent should not fill it with "nothing to do" every
+      // twenty seconds. Manual runs are a human asking, so those are logged.
+      await this.mutate((draft) => {
+        draft.lastHealthyForecast = forecast;
+        this.recordRun(draft, { ...runBase, outcome: "healthy" });
+        if (opts.triggeredBy === "manual") {
           this.log(
             draft,
             "forecast_updated",
@@ -263,8 +305,8 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
             `Forecast re-run — projected minimum ${formatINR(forecast.projectedMinimum)}, no action needed.`,
             { projectedMinimum: forecast.projectedMinimum, headroom: forecast.headroom },
           );
-        });
-      }
+        }
+      });
       return { acted: false, chased: 0, breachWeek: null };
     }
 
@@ -275,6 +317,7 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
       (inv) => inv.chasedAt !== null && inv.status !== "committed" && inv.status !== "paid",
     );
     if (outstanding.length > 0) {
+      await this.mutate((draft) => this.recordRun(draft, { ...runBase, outcome: "waiting_on_replies" }));
       return { acted: false, chased: 0, breachWeek: forecast.breachWeek };
     }
 
@@ -286,6 +329,10 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
     });
 
     if (plan.targets.length === 0) {
+      await this.mutate((draft) => {
+        draft.lastCollectionPlan = plan;
+        this.recordRun(draft, { ...runBase, outcome: "no_targets" });
+      });
       if (state.lastBreachWeek !== forecast.breachWeek) {
         await this.mutate((draft) => {
           draft.lastBreachWeek = forecast.breachWeek;
@@ -309,6 +356,7 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
     // under-chase than contact a customer twice.
     const generation = await this.mutate((draft) => {
       draft.lastBreachWeek = forecast.breachWeek;
+      draft.lastCollectionPlan = plan;
       this.log(
         draft,
         "breach_detected",
@@ -387,9 +435,13 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
       }
     }
 
-    if (stale) return { acted: false, chased: 0, breachWeek: forecast.breachWeek };
+    if (stale) {
+      await this.mutate((draft) => this.recordRun(draft, { ...runBase, outcome: "stale" }));
+      return { acted: false, chased: 0, breachWeek: forecast.breachWeek };
+    }
 
     await this.mutate((draft) => {
+      this.recordRun(draft, { ...runBase, outcome: "chased", chased: plan.totalChased });
       this.log(
         draft,
         "system",
@@ -463,6 +515,18 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
         : decision.outcome === "REJECTED"
           ? "rejected"
           : "escalated";
+
+    // If this only fits because of cash the agent recovered itself, say so.
+    const preamble = recoveryPreamble({
+      outcome: decision.outcome,
+      amount: request.amount,
+      threshold: state.company.rules.minCashThreshold,
+      cleared: state.lastBreachCleared ?? null,
+    });
+    if (preamble) {
+      decision.fallbackNarration = `${decision.fallbackNarration} ${preamble}`;
+    }
+    decision.actor = "agent";
 
     await this.mutate((draft) => {
       draft.requests = [...draft.requests, request];
@@ -543,7 +607,9 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
   async resolveEscalation(
     requestId: string,
     action: "approve" | "reject" | "defer",
+    note?: string,
   ): Promise<{ ok: boolean; error?: string }> {
+    const cleanNote = typeof note === "string" ? note.trim().slice(0, 500) : "";
     return this.mutate((draft) => {
       const request = draft.requests.find((r) => r.id === requestId);
       if (!request) return { ok: false, error: "No such request" };
@@ -552,6 +618,32 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
       }
 
       const now = new Date().toISOString();
+
+      // The CFO's call is itself a decision and belongs in the same ledger as
+      // the agent's, with the divergence visible: what the agent said, what
+      // the human did, and why.
+      const agentDecision = draft.decisions.find((d) => d.requestId === request.id);
+      if (agentDecision) {
+        draft.decisions = [
+          ...draft.decisions,
+          {
+            ...agentDecision,
+            id: crypto.randomUUID(),
+            outcome: action === "approve" ? "APPROVED" : action === "reject" ? "REJECTED" : "ESCALATED",
+            actor: "cfo",
+            note: cleanNote || undefined,
+            supersedes: agentDecision.id,
+            narration: null,
+            fallbackNarration:
+              action === "defer"
+                ? `Deferred by the CFO${cleanNote ? `: ${cleanNote}` : "."} The agent had escalated on ${agentDecision.reasonCode.replace(/_/g, " ")}. It can be re-evaluated against a later forecast.`
+                : `${action === "approve" ? "Approved" : "Rejected"} by the CFO, overriding the agent's escalation on ${agentDecision.reasonCode.replace(/_/g, " ")}${cleanNote ? `: ${cleanNote}` : "."}`,
+            headroomAfter:
+              action === "approve" ? agentDecision.headroomBefore - request.amount : agentDecision.headroomBefore,
+            createdAt: now,
+          },
+        ];
+      }
 
       if (action === "approve") {
         request.status = "approved";
@@ -585,8 +677,8 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
         draft,
         "decision",
         "human",
-        `CFO ${action === "defer" ? "deferred" : `${action}d`} ${formatINR(request.amount)} — ${request.description}.`,
-        { requestId },
+        `CFO ${action === "defer" ? "deferred" : `${action}d`} ${formatINR(request.amount)} — ${request.description}.${cleanNote ? ` Note: ${cleanNote}` : ""}`,
+        { requestId, note: cleanNote || undefined },
       );
       return { ok: true };
     });
@@ -658,6 +750,13 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
 
       if (before.breachWeek !== null && after.breachWeek === null) {
         draft.lastBreachWeek = null;
+        draft.lastBreachCleared = {
+          at: new Date().toISOString(),
+          recovered,
+          customers: targets.map((t) => t.customer),
+          before: before.projectedMinimum,
+          after: after.projectedMinimum,
+        };
         this.log(
           draft,
           "breach_cleared",
@@ -728,9 +827,13 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
 
   async runReplayScenario(): Promise<ReplayResult> {
     return this.mutate((draft) => {
+      // Replay against the SEEDED budget position, not the live one. Now that
+      // periodSpend accumulates, replaying after a few approvals would judge
+      // last quarter''s requests against this quarter''s consumption and give a
+      // different answer depending on when the button was pressed.
       const result = runReplay({
         historical: draft.historical,
-        departments: draft.departments,
+        departments: baseSeed().departments,
         vendors: draft.vendors,
         categoryStats: draft.categoryStats,
         rules: draft.company.rules,
@@ -748,12 +851,218 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
   }
 
   // ---------------------------------------------------------------------
+  // Operator controls
+  // ---------------------------------------------------------------------
+
+  /** Autonomy on/off. Off: the agent still forecasts and detects, but never sends. */
+  async setAutonomy(enabled: boolean): Promise<{ ok: boolean; autonomyEnabled: boolean }> {
+    return this.mutate((draft) => {
+      if (draft.autonomyEnabled === enabled) return { ok: true, autonomyEnabled: enabled };
+      draft.autonomyEnabled = enabled;
+      this.log(
+        draft,
+        "system",
+        "human",
+        enabled
+          ? "Autonomy enabled — the agent may chase receivables on its own again."
+          : "Autonomy paused — the agent will forecast and detect, but not act.",
+        { autonomyEnabled: enabled },
+      );
+      return { ok: true, autonomyEnabled: enabled };
+    });
+  }
+
+  /**
+   * The CFO edits the rulebook. Every field validated; the forecast and all
+   * headroom figures follow automatically because they are derived, not stored.
+   */
+  async updateRules(
+    partial: Partial<CfoRules>,
+  ): Promise<{ ok: boolean; error?: string; rules?: CfoRules }> {
+    if (typeof partial !== "object" || partial === null) return { ok: false, error: "rules must be an object" };
+
+    const money = (v: unknown, field: string): string | null => validateAmount(v, field);
+    const checks: Array<[keyof CfoRules, (v: unknown) => string | null]> = [
+      ["maxAutonomousAmount", (v) => money(v, "maxAutonomousAmount")],
+      ["minCashThreshold", (v) => money(v, "minCashThreshold")],
+      ["rollingAuthorityPool", (v) => money(v, "rollingAuthorityPool")],
+      [
+        "maxBudgetOverage",
+        (v) =>
+          typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1
+            ? null
+            : "maxBudgetOverage must be a fraction between 0 and 1",
+      ],
+      [
+        "anomalyMultiplier",
+        (v) =>
+          typeof v === "number" && Number.isFinite(v) && v >= 1 && v <= 10
+            ? null
+            : "anomalyMultiplier must be between 1 and 10",
+      ],
+      [
+        "rollingWindowDays",
+        (v) =>
+          typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 365
+            ? null
+            : "rollingWindowDays must be a whole number of days between 1 and 365",
+      ],
+      ["requireVendorHistory", (v) => (typeof v === "boolean" ? null : "requireVendorHistory must be true or false")],
+    ];
+
+    const patch: Partial<CfoRules> = {};
+    for (const [key, check] of checks) {
+      if (!(key in partial)) continue;
+      const value = (partial as Record<string, unknown>)[key];
+      const error = check(value);
+      if (error) return { ok: false, error };
+      (patch as Record<string, unknown>)[key] = value;
+    }
+    if (Object.keys(patch).length === 0) return { ok: false, error: "No recognised rule fields supplied" };
+
+    return this.mutate((draft) => {
+      const before = draft.company.rules;
+      const after: CfoRules = { ...before, ...patch };
+      const forecastBefore = buildForecast(this.forecastInput(draft));
+      draft.company = { ...draft.company, rules: after };
+      const forecastAfter = buildForecast(this.forecastInput(draft));
+
+      const changed = (Object.keys(patch) as Array<keyof CfoRules>)
+        .map((k) => `${k}: ${String(before[k])} → ${String(after[k])}`)
+        .join(", ");
+      this.log(
+        draft,
+        "system",
+        "human",
+        `CFO updated the rulebook — ${changed}. Headroom ${formatINR(forecastBefore.headroom)} → ${formatINR(forecastAfter.headroom)}.`,
+        { patch, headroomBefore: forecastBefore.headroom, headroomAfter: forecastAfter.headroom },
+      );
+      return { ok: true, rules: after };
+    });
+  }
+
+  /**
+   * The CFO chases an invoice by hand — including the sensitive accounts the
+   * agent deliberately held back. Same template, same reasoning, human actor.
+   */
+  async chaseInvoice(invoiceId: string): Promise<{ ok: boolean; error?: string; emailId?: string }> {
+    const state = await this.load();
+    const invoice = state.invoices.find((i) => i.id === invoiceId);
+    if (!invoice) return { ok: false, error: "No such invoice" };
+    if (invoice.status === "paid") return { ok: false, error: "Invoice is already paid" };
+    if (chaseableAmount(invoice) <= 0) return { ok: false, error: "Nothing outstanding on this invoice" };
+
+    const forecast = buildForecast(this.forecastInput(state));
+    const candidate = candidateFor(invoice, forecast, state.company, TODAY);
+    const message = buildCollectionEmail(candidate, state.company.name, "Vertex Labs Finance");
+    const recipientOverride = this.env.DEMO_RECIPIENT_EMAIL?.trim();
+    const outgoing = recipientOverride ? { ...message, to: recipientOverride } : message;
+
+    const now = new Date().toISOString();
+    // Commit "chased" before the network call, same discipline as the agent.
+    await this.mutate((draft) => {
+      draft.invoices = draft.invoices.map((inv) => (inv.id === invoiceId ? markChased(inv, now) : inv));
+    });
+
+    const result = await createEmailAdapter(this.env).send(outgoing);
+    const sent: SentEmail = {
+      id: crypto.randomUUID(),
+      invoiceId,
+      message: outgoing,
+      result,
+      sentAt: new Date().toISOString(),
+    };
+
+    await this.mutate((draft) => {
+      draft.emails = [...draft.emails, sent];
+      this.log(
+        draft,
+        "email_sent",
+        "human",
+        `CFO sent a collection email — ${invoice.customer}, ${formatINR(chaseableAmount(invoice))}, ${candidate.daysOverdue} days overdue${invoice.sensitive ? " (relationship-sensitive account, sent by hand)" : ""}.`,
+        { emailId: sent.id, invoiceId, simulated: result.simulated, rationale: candidate.rationale },
+      );
+    });
+
+    return { ok: true, emailId: sent.id };
+  }
+
+  /**
+   * Re-run a deferred or escalated request against today's forecast.
+   *
+   * This is the cleanest demonstration that decisions are derived from state:
+   * defer Marketing before the recovery, re-evaluate after, watch it approve.
+   */
+  async reevaluate(requestId: string): Promise<{ ok: boolean; error?: string; decision?: Decision }> {
+    const state = await this.load();
+    const request = state.requests.find((r) => r.id === requestId);
+    if (!request) return { ok: false, error: "No such request" };
+    if (request.status !== "escalated" && request.status !== "cancelled") {
+      return { ok: false, error: `Only escalated or deferred requests can be re-evaluated (this one is ${request.status})` };
+    }
+    const department = state.departments.find((d) => d.id === request.departmentId);
+    const vendor = state.vendors.find((v) => v.id === request.vendorId);
+    if (!department || !vendor) return { ok: false, error: "Request references an unknown department or vendor" };
+
+    const prior = state.decisions.filter((d) => d.requestId === request.id).at(-1);
+    const categoryStat = state.categoryStats.find(
+      (c) => c.departmentId === request.departmentId && c.category === request.category,
+    );
+
+    const { decision, reservation } = decide({
+      request: { ...request, status: "pending" },
+      department,
+      vendor,
+      categoryStat,
+      rules: state.company.rules,
+      forecastInput: this.forecastInput(state),
+      priorCommitments: this.priorCommitments(state, request.departmentId, request.vendorId),
+      now: new Date().toISOString(),
+    });
+    decision.actor = "agent";
+    if (prior) decision.supersedes = prior.id;
+
+    const preamble = recoveryPreamble({
+      outcome: decision.outcome,
+      amount: request.amount,
+      threshold: state.company.rules.minCashThreshold,
+      cleared: state.lastBreachCleared ?? null,
+    });
+    if (preamble) decision.fallbackNarration = `${decision.fallbackNarration} ${preamble}`;
+
+    const newStatus: SpendRequest["status"] =
+      decision.outcome === "APPROVED" ? "approved" : decision.outcome === "REJECTED" ? "rejected" : "escalated";
+
+    await this.mutate((draft) => {
+      draft.requests = draft.requests.map((r) => (r.id === requestId ? { ...r, status: newStatus } : r));
+      draft.decisions = [...draft.decisions, decision];
+      if (reservation) {
+        draft.reservations = [...draft.reservations, reservation];
+        draft.departments = draft.departments.map((d) =>
+          d.id === department.id ? { ...d, periodSpend: d.periodSpend + request.amount } : d,
+        );
+      }
+      this.log(
+        draft,
+        "decision",
+        "agent",
+        `Re-evaluated — ${decision.outcome} — ${formatINR(request.amount)} for ${department.name} (${vendor.name}).`,
+        { decisionId: decision.id, requestId: request.id, outcome: decision.outcome, supersedes: prior?.id },
+      );
+    });
+
+    this.ctx.waitUntil(this.narrate(decision.id, department.name, vendor.name).catch(() => {}));
+    return { ok: true, decision };
+  }
+
+  // ---------------------------------------------------------------------
   // Read model
   // ---------------------------------------------------------------------
 
   async getDashboardState(): Promise<DashboardState> {
     const state = await this.load();
     const forecast = buildForecast(this.forecastInput(state));
+    const nextAlarm = await this.ctx.storage.getAlarm();
 
     const nameOf = (id: string, list: Array<{ id: string; name: string }>): string =>
       list.find((x) => x.id === id)?.name ?? id;
@@ -767,16 +1076,36 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
       const departmentName = nameOf(request.departmentId, state.departments);
       const vendorName = nameOf(request.vendorId, state.vendors);
       views.push({ decision, request, departmentName, vendorName });
-      if (decision.outcome === "ESCALATED" && request.status === "escalated") {
-        escalations.push({ request, decision, departmentName, vendorName });
-      }
     }
+
+    // An escalation is open when the request is still escalated; show the
+    // latest agent decision for it.
+    for (const request of state.requests) {
+      if (request.status !== "escalated") continue;
+      const latest = state.decisions
+        .filter((d) => d.requestId === request.id && d.actor !== "cfo")
+        .at(-1);
+      if (!latest) continue;
+      escalations.push({
+        request,
+        decision: latest,
+        departmentName: nameOf(request.departmentId, state.departments),
+        vendorName: nameOf(request.vendorId, state.vendors),
+      });
+    }
+
+    const runs = state.runs ?? [];
 
     return {
       company: state.company,
+      today: TODAY,
       forecast,
+      lastHealthyForecast: state.lastHealthyForecast ?? null,
       departments: state.departments,
+      vendors: state.vendors,
       invoices: state.invoices,
+      payables: state.payables,
+      reservations: state.reservations,
       // Insertion order already encodes causality; several entries share a
       // millisecond, and sorting on the timestamp alone reorders them.
       activity: [...state.activity].reverse(),
@@ -787,6 +1116,18 @@ export class CompanyAgent extends DurableObject<AgentEnv> {
         .filter((r) => r.releasedAt === null)
         .reduce((sum, r) => sum + r.amount, 0),
       replay: state.replay,
+      agent: {
+        autonomyEnabled: state.autonomyEnabled,
+        nextAlarmAt: nextAlarm === null ? null : new Date(nextAlarm).toISOString(),
+        lastRunAt: runs.length > 0 ? runs[runs.length - 1]!.at : null,
+        intervalMs: ALARM_INTERVAL_MS,
+        runs: [...runs].reverse(),
+        emailProvider: createEmailAdapter(this.env).provider,
+        llmProvider: createLLMAdapter(this.env).provider,
+        guardrails: { ...COLLECTION_DEFAULTS },
+      },
+      lastCollectionPlan: state.lastCollectionPlan ?? null,
+      lastBreachCleared: state.lastBreachCleared ?? null,
     };
   }
 }

@@ -125,6 +125,7 @@ export function runReplay(input: ReplayInput): ReplayResult {
       request: historical,
       agentOutcome: outcome as DecisionOutcome,
       agreed: matches,
+      failedRules: evaluations.filter((e) => !e.passed).map((e) => e.rule),
     });
   }
 
