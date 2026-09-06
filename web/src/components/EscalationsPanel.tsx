@@ -53,12 +53,12 @@ export function EscalationsPanel({ state, onAskWhy, className }: Props) {
       bodyClassName={empty && actionError === null ? "panel-body-flush" : "panel-body-esc"}
       right={
         escalations.length > 0 ? (
-          <span className="badge badge-danger">
+          <span className="chip chip-danger">
             <i className="dot" />
             {escalations.length} awaiting you
           </span>
         ) : (
-          <span className="badge badge-ok">
+          <span className="chip chip-ok">
             <i className="dot" />
             clear
           </span>

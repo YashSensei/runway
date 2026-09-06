@@ -172,7 +172,7 @@ export default function PolicyPage(props: PageProps) {
 
   return (
     <div className="page page-cols-7-5">
-      <div className="stack" style={{ minWidth: 0 }}>
+      <div className="stack min0">
         <Panel
           title="Rules"
           className="panel-auto"
@@ -197,7 +197,7 @@ export default function PolicyPage(props: PageProps) {
             </>
           }
         >
-          <p className="principle" style={{ margin: "0 0 12px", fontSize: 14 }}>
+          <p className="principle m-0 mb-3 fs-3">
             The limit is a ceiling on the agent's authority — not permission to approve.
           </p>
 
@@ -304,7 +304,6 @@ export default function PolicyPage(props: PageProps) {
                   disabled={pending}
                   aria-pressed={draft.requireVendorHistory}
                   onClick={() => set("requireVendorHistory", !draft.requireVendorHistory)}
-                  style={{ fontFamily: "var(--mono)" }}
                 >
                   {draft.requireVendorHistory ? "always" : "do not"}
                 </button>{" "}
@@ -341,7 +340,7 @@ export default function PolicyPage(props: PageProps) {
         </Panel>
       </div>
 
-      <div className="stack" style={{ minWidth: 0 }}>
+      <div className="stack min0">
         <Panel
           title="Impact preview"
           className="panel-auto"
@@ -364,7 +363,7 @@ export default function PolicyPage(props: PageProps) {
             <ImpactSummary state={state} current={current} proposed={proposed} impact={impact} openDecision={openDecision} />
           )}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+          <div className="row mt-3 row-wrap">
             <button
               type="button"
               className={`btn btn-approve${pending ? " btn-pending" : ""}`}
@@ -386,7 +385,7 @@ export default function PolicyPage(props: PageProps) {
               Revert
             </button>
             {saved !== null ? (
-              <span className="badge badge-ok">
+              <span className="chip chip-ok">
                 <i className="dot" />
                 {saved}
               </span>
@@ -394,7 +393,7 @@ export default function PolicyPage(props: PageProps) {
           </div>
 
           {error !== null ? (
-            <div className="inline-alert" role="alert" style={{ marginTop: 12, marginBottom: 0 }}>
+            <div className="inline-alert mt-3 mb-0" role="alert">
               <span className="inline-alert-title">Not saved</span>
               <span className="inline-alert-body">{error}</span>
             </div>
@@ -442,9 +441,9 @@ function RuleCard({
 
   return (
     <div className="dept" style={{ padding: "10px 0 12px" }}>
-      <div style={{ fontSize: 14.5, lineHeight: 1.9, color: "var(--text)" }}>{sentence}</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4, flexWrap: "wrap" }}>
-        <span className={`chip`} style={{ color: severity === "hard" ? "var(--danger)" : "var(--warn)" }}>
+      <div className="fs-3 c-1">{sentence}</div>
+      <div className="row mt-1 row-wrap">
+        <span className={`chip ${severity === "hard" ? "c-danger" : "c-warn"}`}>
           {severity === "hard" ? "hard · fails to REJECT" : "soft · fails to ESCALATE"}
         </span>
         {ruleIds.map((id) => (
@@ -454,27 +453,26 @@ function RuleCard({
         ))}
         <button
           type="button"
-          className="btn btn-sm btn-ghost"
+          className="btn btn-sm btn-ghost ml-auto"
           disabled={hits.length === 0}
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}
-          style={{ marginLeft: "auto", fontFamily: "var(--mono)", fontSize: 11 }}
         >
           failed {hits.length === 1 ? "once" : `${hits.length} times`} this session
           {hits.length > 0 ? (open ? " · hide" : " · show") : ""}
         </button>
       </div>
-      <div className="state-delta" style={{ marginTop: 5, fontSize: 11.5, color: "var(--text-2)" }}>
+      <div className="state-delta mt-1 fs-1 c-2">
         {explain}
       </div>
       {open && hits.length > 0 ? (
-        <div className="tbl" style={{ marginTop: 6 }}>
+        <div className="tbl mt-1">
           {hits.map((v) => (
             <button
               key={v.decision.id}
               type="button"
               className="tbl-row"
-              style={{ gridTemplateColumns: "58px minmax(0, 1fr) 76px 92px", padding: "4px 0", fontSize: 11.5 }}
+              style={{ gridTemplateColumns: "58px minmax(0, 1fr) 76px 92px", padding: "4px 0" }}
               onClick={() => openDecision(v.decision.id)}
               title={`${v.decision.id} · open audit record`}
             >
@@ -507,8 +505,8 @@ function RupeeInput({
 }) {
   const parsed = parseRupees(value);
   return (
-    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
-      <span className="mono" style={{ color: "var(--text-2)" }}>
+    <span className="row-inline row-base">
+      <span className="mono c-2">
         ₹
       </span>
       <input
@@ -521,7 +519,7 @@ function RupeeInput({
         className="field field-inline"
         style={{ width: 118 }}
       />
-      <span className="mono" style={{ color: "var(--text-3)", fontSize: 11.5 }}>
+      <span className="mono c-3 fs-1">
         {parsed === null ? "?" : lakh(parsed)}
       </span>
     </span>
@@ -594,7 +592,7 @@ function ImpactSummary({
               ? `; the ${weekLabel(impact.breachAfter)} breach remains`
               : "";
     lines.push(
-      <p key="threshold" className="replay-note" style={{ margin: 0 }}>
+      <p key="threshold" className="replay-note m-0">
         {dir} the safety threshold to <b className="mono">{lakh(proposed.minCashThreshold)}</b>{" "}
         {impact.headroomAfter >= 0 ? "gives" : "leaves"} the agent{" "}
         <b className="mono">{lakh(impact.headroomAfter)}</b> of headroom
@@ -607,7 +605,7 @@ function ImpactSummary({
 
   if (limitChanged) {
     lines.push(
-      <p key="limit" className="replay-note" style={{ margin: 0 }}>
+      <p key="limit" className="replay-note m-0">
         Per-request ceiling <b className="mono">{lakh(proposed.maxAutonomousAmount)}</b>, pool{" "}
         <b className="mono">{lakh(proposed.rollingAuthorityPool)}</b> per department per{" "}
         <b className="mono">{proposed.rollingWindowDays}d</b>.{" "}
@@ -622,7 +620,7 @@ function ImpactSummary({
 
   if (thresholdChanged && !limitChanged && state.escalations.length > 0) {
     lines.push(
-      <p key="fits" className="replay-note" style={{ margin: 0 }}>
+      <p key="fits" className="replay-note m-0">
         {impact.nowFits.length === 0
           ? `None of the ${plural(state.escalations.length, "open escalation")} would newly fit.`
           : `${plural(impact.nowFits.length, "open escalation")} would now fit — re-evaluate to let the agent act.`}
@@ -632,7 +630,7 @@ function ImpactSummary({
 
   if (proposed.maxBudgetOverage !== current.maxBudgetOverage) {
     lines.push(
-      <p key="overage" className="replay-note" style={{ margin: 0 }}>
+      <p key="overage" className="replay-note m-0">
         Budget ceiling moves to <b className="mono">{percent(1 + proposed.maxBudgetOverage)}</b> of
         quarterly budget:{" "}
         {state.departments
@@ -645,7 +643,7 @@ function ImpactSummary({
 
   if (proposed.requireVendorHistory !== current.requireVendorHistory) {
     lines.push(
-      <p key="vendor" className="replay-note" style={{ margin: 0 }}>
+      <p key="vendor" className="replay-note m-0">
         {proposed.requireVendorHistory
           ? "First-time vendors will be rejected outright until a human approves them."
           : `First-time vendors (${plural(state.vendors.filter((v) => v.invoiceCount === 0).length, "on file")}) will be judged on amount and cash alone.`}
@@ -655,7 +653,7 @@ function ImpactSummary({
 
   if (proposed.anomalyMultiplier !== current.anomalyMultiplier) {
     lines.push(
-      <p key="anomaly" className="replay-note" style={{ margin: 0 }}>
+      <p key="anomaly" className="replay-note m-0">
         Requests above <b className="mono">{proposed.anomalyMultiplier}×</b> the category average
         will be flagged. The baselines live on the server, so this cannot be previewed here.
       </p>,
@@ -663,8 +661,8 @@ function ImpactSummary({
   }
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
-      <dl className="kv kv-tight" style={{ margin: 0 }}>
+    <div className="stack-2">
+      <dl className="kv kv-tight m-0">
         <dt>projected minimum</dt>
         <dd>
           {lakh(f.projectedMinimum)} <span className="kv-unit">{weekLabel(f.projectedMinimumWeek)}</span>
@@ -681,11 +679,11 @@ function ImpactSummary({
         </dd>
         <dt>headroom</dt>
         <dd>
-          <span style={{ color: f.headroom < 0 ? "var(--danger)" : "var(--text)" }}>{lakh(f.headroom)}</span>
+          <span className={f.headroom < 0 ? "c-danger" : "c-1"}>{lakh(f.headroom)}</span>
           {thresholdChanged ? (
             <>
               <span className="kv-unit"> → </span>
-              <span style={{ color: impact.headroomAfter < 0 ? "var(--danger)" : "var(--ok)" }}>
+              <span className={impact.headroomAfter < 0 ? "c-danger" : "c-ok"}>
                 {lakh(impact.headroomAfter)}
               </span>
             </>
@@ -711,7 +709,7 @@ function ImpactSummary({
 
       {impact.nowFits.length > 0 ? (
         <div className="tbl">
-          <div className="more-row" style={{ padding: "4px 0" }}>
+          <div className="more-row py-1">
             would now fit
           </div>
           {impact.nowFits.map((v) => (
@@ -719,7 +717,7 @@ function ImpactSummary({
               key={v.decision.id}
               type="button"
               className="tbl-row"
-              style={{ gridTemplateColumns: "minmax(0, 1fr) 76px", padding: "4px 0", fontSize: 11.5 }}
+              style={{ gridTemplateColumns: "minmax(0, 1fr) 76px", padding: "4px 0" }}
               onClick={() => openDecision(v.decision.id)}
             >
               <span className="tbl-ellipsis">
@@ -732,7 +730,7 @@ function ImpactSummary({
       ) : null}
 
       {impact.noLongerFits.length > 0 ? (
-        <div className="state-delta" style={{ color: "var(--warn)" }}>
+        <div className="state-delta c-warn">
           {plural(impact.noLongerFits.length, "open escalation")} that fits today would no longer fit.
         </div>
       ) : null}
@@ -758,45 +756,19 @@ const LADDER: Array<{ n: number; test: string; outcome: "REJECTED" | "ESCALATED"
 function PrecedenceLadder() {
   return (
     <Panel title="Precedence ladder" className="panel-auto" right={<span className="panel-note">first match wins</span>}>
-      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 0 }}>
+      <ol className="list stack-1">
         {LADDER.map((step, i) => (
-          <li
-            key={step.n}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "28px minmax(0, 1fr) 96px",
-              gap: 12,
-              alignItems: "start",
-              padding: "9px 0",
-              borderBottom: i < LADDER.length - 1 ? "1px solid var(--line)" : "none",
-              position: "relative",
-            }}
-          >
-            <span
-              className="mono"
-              style={{
-                width: 24,
-                height: 24,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px solid var(--line-strong)",
-                borderRadius: 3,
-                background: "var(--bg-raised)",
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-              aria-label={`step ${step.n}`}
-            >
+          <li key={step.n} className="ladder-step">
+            <span className="mono ladder-n" aria-label={`step ${step.n}`}>
               {step.n}
             </span>
-            <span style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, color: "var(--text)" }}>{step.test}</div>
-              <div className="state-delta" style={{ marginTop: 2 }}>
+            <span className="min0">
+              <div className="fs-2 c-1">{step.test}</div>
+              <div className="state-delta mt-1">
                 {step.note}
               </div>
             </span>
-            <span style={{ textAlign: "right" }}>
+            <span className="ta-r">
               <span className={`outcome outcome-${step.outcome}`}>{step.outcome}</span>
             </span>
           </li>

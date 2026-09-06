@@ -159,7 +159,7 @@ function ReceivablesPanel({ invoices }: { invoices: Invoice[] }) {
       bodyClassName="panel-body-flush"
       right={
         <span className="panel-note">
-          <span style={{ color: "var(--text)" }}>{lakh(expected)}</span> expected · {sorted.length}{" "}
+          <span className="c-1">{lakh(expected)}</span> expected · {sorted.length}{" "}
           open
         </span>
       }
@@ -179,10 +179,10 @@ function ReceivablesPanel({ invoices }: { invoices: Invoice[] }) {
 
             const statusColor =
               inv.status === "overdue"
-                ? "var(--danger)"
+                ? "c-danger"
                 : inv.status === "committed"
-                  ? "var(--ok)"
-                  : "var(--text-2)";
+                  ? "c-ok"
+                  : "c-2";
 
             return (
               <div
@@ -197,12 +197,12 @@ function ReceivablesPanel({ invoices }: { invoices: Invoice[] }) {
                 <span className="mono tbl-dim inv-due">due {shortDate(inv.dueDate)}</span>
                 <span className="chip-row">
                   {committed !== null ? (
-                    <span className="chip" style={{ color: "var(--ok)" }}>
+                    <span className="chip c-ok">
                       committed {lakh(committed)}
                       {inv.committedDate !== undefined ? ` · ${shortDate(inv.committedDate)}` : ""}
                     </span>
                   ) : null}
-                  <span className="chip" style={{ color: statusColor }}>
+                  <span className={`chip ${statusColor}`}>
                     {inv.chasedAt !== null ? "chased · " : ""}
                     {inv.status}
                   </span>
@@ -255,17 +255,17 @@ function BudgetsPanel({ departments, overage }: { departments: Department[]; ove
                   ? "bar-fill-warn"
                   : "";
           const pctColor =
-            ratio > ceiling ? "var(--danger)" : ratio > 0.85 ? "var(--warn)" : "var(--text)";
+            ratio > ceiling ? "c-danger" : ratio > 0.85 ? "c-warn" : "c-1";
 
           return (
             <div className="dept" key={d.id}>
               <div className="dept-line">
                 <span className="dept-name">{d.name}</span>
                 <span className="dept-figures">
-                  <span style={{ color: "var(--text)" }}>{lakh(d.periodSpend)}</span>
+                  <span className="c-1">{lakh(d.periodSpend)}</span>
                   {" / "}
                   {lakh(d.quarterlyBudget)}
-                  <span className="dept-pct" style={{ color: pctColor }}>
+                  <span className={`dept-pct ${pctColor}`}>
                     {percent(ratio)}
                   </span>
                 </span>

@@ -158,19 +158,19 @@ export function ForecastChart({
       right={
         <>
           <span className="chart-legend">
-            <span style={{ color: OK }}>
+            <span className="c-ok">
               <i className="swatch" /> above floor
             </span>
-            <span style={{ color: DANGER }}>
+            <span className="c-danger">
               <i className="swatch" /> below floor
             </span>
             {showGhost ? (
-              <span style={{ color: GHOST }}>
+              <span className="c-3">
                 <i className="swatch swatch-dash" /> last healthy
               </span>
             ) : null}
             {showHyp ? (
-              <span style={{ color: HYP }}>
+              <span className="c-accent">
                 <i className="swatch swatch-dash" /> what-if
               </span>
             ) : null}
@@ -288,8 +288,7 @@ export function ForecastChart({
                     value: "0",
                     position: "insideBottomLeft",
                     fill: AXIS,
-                    fontSize: 11,
-                    letterSpacing: 1.2,
+                    fontSize: TICK_FONT_SIZE,
                     dy: -4,
                   }}
                 />
@@ -533,7 +532,7 @@ function ForecastTooltip(props: TooltipProps<number, string>) {
   return (
     <div className="tip">
       <div className="tip-head">
-        <span className="tip-week" style={{ color: w.belowThreshold ? DANGER : OK }}>
+        <span className={`tip-week ${w.belowThreshold ? "c-danger" : "c-ok"}`}>
           Week {w.week}
         </span>
         <span className="tip-date">{shortDate(w.startDate)}</span>
@@ -570,19 +569,19 @@ function ForecastTooltip(props: TooltipProps<number, string>) {
 
       <div className="tip-row tip-total">
         <span>closing</span>
-        <b style={{ color: w.belowThreshold ? DANGER : OK }}>{rupees(w.closingCash)}</b>
+        <b className={w.belowThreshold ? "c-danger" : "c-ok"}>{rupees(w.closingCash)}</b>
       </div>
 
       {row.ghost !== undefined ? (
         <div className="tip-row">
           <span>last healthy</span>
-          <b style={{ color: GHOST }}>{`₹${row.ghost.toFixed(1)}L`}</b>
+          <b className="c-3">{`₹${row.ghost.toFixed(1)}L`}</b>
         </div>
       ) : null}
       {row.hyp !== undefined ? (
         <div className="tip-row">
           <span>what-if</span>
-          <b style={{ color: HYP }}>{`₹${row.hyp.toFixed(1)}L`}</b>
+          <b className="c-accent">{`₹${row.hyp.toFixed(1)}L`}</b>
         </div>
       ) : null}
 

@@ -22,13 +22,13 @@ export default function AgentPage(props: PageProps) {
 
   return (
     <div className="page page-cols-5-7">
-      <div className="stack" style={{ minWidth: 0 }}>
+      <div className="stack min0">
         <AutonomySwitch {...props} />
         <Heartbeat {...props} />
         <Providers {...props} />
         <Guardrails {...props} />
       </div>
-      <div className="stack" style={{ minWidth: 0 }}>
+      <div className="stack min0">
         <RunLog runs={state.agent.runs} />
         <Capabilities />
         <LastPlan plan={state.lastCollectionPlan} horizonBreach={state.forecast.breachWeek} />
@@ -77,19 +77,19 @@ function AutonomySwitch({ state }: PageProps) {
       className="panel-auto"
       right={
         shown ? (
-          <span className="badge badge-agent">
+          <span className="chip chip-accent">
             <i className="dot" />
             acting
           </span>
         ) : (
-          <span className="badge badge-mock">
+          <span className="chip chip-warn">
             <i className="dot" />
             paused
           </span>
         )
       }
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <div className="row">
         <button
           type="button"
           role="switch"
@@ -97,52 +97,14 @@ function AutonomySwitch({ state }: PageProps) {
           aria-busy={pending}
           disabled={pending}
           onClick={() => void toggle()}
-          className={`btn${pending ? " btn-pending" : shown ? " btn-why" : ""}`}
+          className="switch"
           title={shown ? "Pause the agent" : "Let the agent act"}
-          style={{
-            width: 132,
-            height: 52,
-            padding: 0,
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            alignItems: "stretch",
-            fontFamily: "var(--mono)",
-            fontSize: 12,
-            letterSpacing: "0.14em",
-            textTransform: "uppercase",
-            flex: "none",
-          }}
-        >
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: shown ? "var(--agent)" : "transparent",
-              color: shown ? "var(--bg)" : "var(--text-3)",
-              fontWeight: 700,
-            }}
-          >
-            {pending ? "…" : "ON"}
-          </span>
-          <span
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: shown ? "transparent" : "var(--line-strong)",
-              color: shown ? "var(--text-3)" : "var(--text)",
-              fontWeight: 700,
-            }}
-          >
-            {pending ? "…" : "OFF"}
-          </span>
-        </button>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 15, color: "var(--text)", fontWeight: 600 }}>
+        />
+        <div className="min0">
+          <div className="fs-3 c-1 fw-6">
             {shown ? "Acting" : "Paused"}
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-2)", lineHeight: 1.45 }}>
+          <div className="fs-2 c-2">
             {shown
               ? "Will chase receivables on its own when the forecast breaches."
               : "Forecasts and detects, does not act."}
@@ -151,7 +113,7 @@ function AutonomySwitch({ state }: PageProps) {
       </div>
 
       {error !== null ? (
-        <div className="inline-alert" role="alert" style={{ marginTop: 12, marginBottom: 0 }}>
+        <div className="inline-alert mt-3 mb-0" role="alert">
           <span className="inline-alert-title">Not changed</span>
           <span className="inline-alert-body">{error}</span>
         </div>
@@ -184,15 +146,15 @@ function Heartbeat({ state }: PageProps) {
       className="panel-auto"
       right={<span className="panel-note">every {duration(interval)}</span>}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+      <div className="row">
         <Ring progress={progress} idle={remaining === null} overdue={remaining !== null && remaining < 0} />
-        <dl className="kv kv-tight" style={{ flex: 1, minWidth: 0 }}>
+        <dl className="kv kv-tight flex-1 min0">
           <dt>next wake</dt>
           <dd>
             {remaining === null ? (
-              <span style={{ color: "var(--warn)" }}>not scheduled</span>
+              <span className="c-warn">not scheduled</span>
             ) : remaining < 0 ? (
-              <span style={{ color: "var(--warn)" }}>firing · {duration(-remaining)} late</span>
+              <span className="c-warn">firing · {duration(-remaining)} late</span>
             ) : (
               `in ${duration(remaining)}`
             )}
@@ -205,7 +167,7 @@ function Heartbeat({ state }: PageProps) {
           <dd>{last ? <OutcomeChip run={last} /> : "—"}</dd>
         </dl>
       </div>
-      <div className="state-delta" style={{ marginTop: 10 }}>
+      <div className="state-delta mt-2">
         {remaining === null
           ? "No alarm is set on the Durable Object. The loop only runs when something schedules it."
           : "The Durable Object alarm wakes the agent on its own — no browser, no cron, no human in the loop."}
@@ -228,9 +190,9 @@ function Ring({ progress, idle, overdue }: { progress: number; idle: boolean; ov
       viewBox={`0 0 ${size} ${size}`}
       role="img"
       aria-label={idle ? "No alarm scheduled" : `${Math.round(progress * 100)}% of the interval elapsed`}
-      style={{ flex: "none" }}
+      className="flex-none"
     >
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line-strong)" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
       <circle
         cx={size / 2}
         cy={size / 2}
@@ -249,7 +211,7 @@ function Ring({ progress, idle, overdue }: { progress: number; idle: boolean; ov
         dominantBaseline="central"
         textAnchor="middle"
         fill="var(--text)"
-        style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600 }}
+        className="mono fs-1 fw-6"
       >
         {idle ? "—" : `${Math.round(progress * 100)}%`}
       </text>
@@ -295,19 +257,19 @@ function RunLog({ runs }: { runs: AgentRun[] }) {
             <div
               key={`${run.at}-${i}`}
               className="tbl-row"
-              style={{ gridTemplateColumns: RUN_COLUMNS, fontSize: 12 }}
+              style={{ gridTemplateColumns: RUN_COLUMNS }}
               title={stamp(run.at)}
             >
               <span className="mono tbl-dim">{clock(run.at)}</span>
               <span>
                 {run.trigger === "alarm" ? (
-                  <span className="tag-agent">Alarm</span>
+                  <span className="chip chip-accent">Alarm</span>
                 ) : (
-                  <span className="tag-human">Manual</span>
+                  <span className="chip">Manual</span>
                 )}
               </span>
               <span className="mono tbl-right">{lakh(run.projectedMinimum)}</span>
-              <span className="mono tbl-right" style={{ color: run.headroom < 0 ? "var(--danger)" : undefined }}>
+              <span className={`mono tbl-right ${run.headroom < 0 ? "c-danger" : ""}`}>
                 {lakh(run.headroom)}
               </span>
               <span className="mono tbl-dim">{run.breachWeek === null ? "none" : `wk ${run.breachWeek}`}</span>
@@ -326,23 +288,23 @@ function RunLog({ runs }: { runs: AgentRun[] }) {
 function OutcomeChip({ run }: { run: AgentRun }) {
   switch (run.outcome) {
     case "healthy":
-      return <span className="log-chip log-chip-ok">healthy</span>;
+      return <span className="chip chip-ok">healthy</span>;
     case "chased":
       return (
-        <span className="log-chip log-chip-agent">
+        <span className="chip chip-accent">
           chased {run.chased !== undefined ? lakh(run.chased) : ""}
         </span>
       );
     case "waiting_on_replies":
-      return <span className="log-chip log-chip-warn">waiting on replies</span>;
+      return <span className="chip chip-warn">waiting on replies</span>;
     case "no_targets":
-      return <span className="log-chip log-chip-danger">no targets</span>;
+      return <span className="chip chip-danger">no targets</span>;
     case "disabled":
-      return <span className="log-chip">disabled</span>;
+      return <span className="chip">disabled</span>;
     case "stale":
-      return <span className="log-chip log-chip-warn">stale</span>;
+      return <span className="chip chip-warn">stale</span>;
     default:
-      return <span className="log-chip">{String(run.outcome).replace(/_/g, " ")}</span>;
+      return <span className="chip">{String(run.outcome).replace(/_/g, " ")}</span>;
   }
 }
 
@@ -388,28 +350,21 @@ const CAPABILITIES: Array<{ title: string; tone: "ok" | "warn" | "danger"; items
 function Capabilities() {
   return (
     <Panel title="Capabilities" className="panel-auto" right={<span className="panel-note">autonomy bounded by reversibility</span>}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 }}>
+      <div className="cols-3">
         {CAPABILITIES.map((col) => (
-          <div key={col.title} style={{ minWidth: 0 }}>
-            <span className={`log-chip log-chip-${col.tone === "ok" ? "ok" : col.tone === "warn" ? "warn" : "danger"}`}>
+          <div key={col.title} className="min0">
+            <span className={`chip chip-${col.tone === "ok" ? "ok" : col.tone === "warn" ? "warn" : "danger"}`}>
               {col.title}
             </span>
-            <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0, display: "grid", gap: 5 }}>
+            <ul className="list mt-2 stack-1">
               {col.items.map((item) => (
                 <li
                   key={item}
-                  style={{
-                    fontSize: 12.5,
-                    lineHeight: 1.4,
-                    color: "var(--text)",
-                    paddingLeft: 12,
-                    position: "relative",
-                  }}
+                  className="fs-2 c-1 pl-3 rel"
                 >
                   <span
                     aria-hidden="true"
-                    className="mono"
-                    style={{ position: "absolute", left: 0, color: "var(--text-3)" }}
+                    className="mono abs-l c-3"
                   >
                     {col.tone === "ok" ? "+" : col.tone === "warn" ? ">" : "x"}
                   </span>
@@ -442,19 +397,19 @@ function Providers({ state }: PageProps) {
       <dl className="kv kv-tight">
         <dt>email</dt>
         <dd>
-          <span className={`log-chip ${emailReal ? "log-chip-agent" : ""}`}>{emailProvider}</span>
+          <span className={`chip ${emailReal ? "chip-accent" : ""}`}>{emailProvider}</span>
         </dd>
         <dt>narration model</dt>
         <dd>
-          <span className={`log-chip ${llmOff ? "" : "log-chip-agent"}`}>{llmOff ? "none · deterministic" : llmProvider}</span>
+          <span className={`chip ${llmOff ? "" : "chip-accent"}`}>{llmOff ? "none · deterministic" : llmProvider}</span>
         </dd>
       </dl>
-      <div className="state-delta" style={{ marginTop: 8, lineHeight: 1.5 }}>
+      <div className="state-delta mt-2">
         {emailReal
           ? `Collection emails are transmitted through ${emailProvider}. Every send is still retained here for review.`
           : "Collection emails are rendered to the activity log, not transmitted. Same template, same timing, nothing leaves the building."}
       </div>
-      <div className="state-delta" style={{ marginTop: 4, lineHeight: 1.5 }}>
+      <div className="state-delta mt-1">
         {llmOff
           ? "No language model is configured. Every narration you read is the engine's own deterministic explanation — the decision itself never depends on a model either way."
           : `${llmProvider} restates decisions the engine has already made. If it fails, the deterministic narration is shown instead; the decision is unaffected.`}
@@ -479,7 +434,7 @@ function Guardrails({ state }: PageProps) {
         <dt>coverage factor</dt>
         <dd>{g.coverageFactor.toFixed(2)}×</dd>
       </dl>
-      <ul style={{ margin: "8px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
+      <ul className="mt-2 list stack-1">
         <li className="state-delta">
           Cooldown — a customer chased in the last {plural(g.cooldownDays, "day")} is not chased again, whatever the gap.
         </li>
@@ -539,15 +494,15 @@ function LastPlan({ plan, horizonBreach }: { plan: CollectionPlan | null; horizo
             <span className="tbl-right">score</span>
           </div>
           {targets.map((t, rank) => (
-            <div key={t.invoice.id} style={{ borderBottom: "1px solid var(--line)" }}>
+            <div key={t.invoice.id} className="bb">
               <div
                 className="tbl-row"
-                style={{ gridTemplateColumns: PLAN_COLUMNS, fontSize: 12, borderBottom: "none" }}
+                style={{ gridTemplateColumns: PLAN_COLUMNS, borderBottom: "none" }}
                 title={`rank ${rank + 1} · ${t.invoice.customerEmail} · due ${t.invoice.dueDate}`}
               >
                 <span className="mono tbl-dim">{t.invoice.id}</span>
                 <span className="tbl-ellipsis">
-                  <span className="mono tbl-dim" style={{ marginRight: 6 }}>
+                  <span className="mono tbl-dim mr-2">
                     #{rank + 1}
                   </span>
                   {t.invoice.customer}
@@ -558,14 +513,14 @@ function LastPlan({ plan, horizonBreach }: { plan: CollectionPlan | null; horizo
                 <span className="mono tbl-dim">wk {t.expectedArrivalWeek}</span>
                 <span>
                   {t.landsBeforeBreach ? (
-                    <span className="log-chip log-chip-ok">yes</span>
+                    <span className="chip chip-ok">yes</span>
                   ) : (
-                    <span className="log-chip log-chip-warn">no</span>
+                    <span className="chip chip-warn">no</span>
                   )}
                 </span>
                 <span className="mono tbl-right">{t.score.toFixed(2)}</span>
               </div>
-              <div className="state-delta" style={{ padding: "0 14px 7px", lineHeight: 1.45 }}>
+              <div className="state-delta" style={{ padding: "0 14px 7px" }}>
                 {t.rationale}
               </div>
             </div>
@@ -584,7 +539,7 @@ function LastPlan({ plan, horizonBreach }: { plan: CollectionPlan | null; horizo
             <div
               key={s.invoiceId}
               className="tbl-row"
-              style={{ gridTemplateColumns: "72px minmax(0, 1fr)", fontSize: 12 }}
+              style={{ gridTemplateColumns: "72px minmax(0, 1fr)" }}
             >
               <span className="mono tbl-dim">{s.invoiceId}</span>
               <span className="tbl-dim">{s.reason}</span>

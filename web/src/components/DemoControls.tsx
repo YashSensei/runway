@@ -43,8 +43,7 @@ export function DemoControls({ open, onClose }: Props) {
         <span className="demo-title">Demo Controls</span>
         <button
           type="button"
-          className="modal-close"
-          style={{ marginLeft: "auto" }}
+          className="modal-close ml-auto"
           onClick={onClose}
           aria-label="Close demo controls"
         >

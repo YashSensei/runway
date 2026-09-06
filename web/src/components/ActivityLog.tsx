@@ -39,7 +39,7 @@ export function ActivityLog({
       bodyClassName="panel-body-flush"
       right={
         <>
-          <span className="badge badge-agent">
+          <span className="chip chip-accent">
             <i className="dot" />
             {agentCount} autonomous
           </span>
@@ -83,7 +83,7 @@ export function ActivityLog({
                 {/* Type is a chip in its own column — icon plus text — so it
                     can never run into the summary. */}
                 <span
-                  className={`log-chip log-chip-${tone}`}
+                  className={`chip chip-${tone}`}
                   title={activityLabel(entry.type)}
                 >
                   <TypeIcon type={entry.type} link={link} />
@@ -95,9 +95,9 @@ export function ActivityLog({
                 <span className="log-tail">
                   {clickable ? <span className="log-open">Open</span> : null}
                   {entry.actor === "agent" ? (
-                    <span className="tag-agent">Agent</span>
+                    <span className="chip chip-accent">Agent</span>
                   ) : (
-                    <span className="tag-human">Human</span>
+                    <span className="chip">Human</span>
                   )}
                 </span>
               </button>

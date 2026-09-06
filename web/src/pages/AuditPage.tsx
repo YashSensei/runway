@@ -282,7 +282,7 @@ function Ledger({ state, onOpen }: { state: DashboardState; onOpen: (id: string)
                   {clock(v.decision.createdAt)}
                 </span>
                 <span>
-                  {isOverride ? <span className="chip chip-override">CFO</span> : <span className="tag-agent">Agent</span>}
+                  {isOverride ? <span className="chip chip-override">CFO</span> : <span className="chip chip-accent">Agent</span>}
                 </span>
                 <span className="tbl-ellipsis">{v.departmentName}</span>
                 <span className="tbl-ellipsis tbl-dim">{v.vendorName}</span>
@@ -302,14 +302,13 @@ function Ledger({ state, onOpen }: { state: DashboardState; onOpen: (id: string)
                 <span className="mono tbl-right tbl-dim">
                   {lakh(v.decision.headroomBefore)} →{" "}
                   <span
-                    style={{
-                      color:
-                        v.decision.headroomAfter < v.decision.headroomBefore
-                          ? "var(--text)"
-                          : v.decision.headroomAfter > v.decision.headroomBefore
-                            ? "var(--ok)"
-                            : "var(--text-2)",
-                    }}
+                    className={
+                      v.decision.headroomAfter < v.decision.headroomBefore
+                        ? "c-1"
+                        : v.decision.headroomAfter > v.decision.headroomBefore
+                          ? "c-ok"
+                          : "c-2"
+                    }
                   >
                     {lakh(v.decision.headroomAfter)}
                   </span>
@@ -344,7 +343,7 @@ function FilterGroup({
         <button
           key={o}
           type="button"
-          className={`filter-chip${value === o ? " filter-chip-on" : ""}`}
+          className={`chip chip-btn${value === o ? " chip-accent" : ""}`}
           onClick={() => onChange(value === o ? null : o)}
           aria-pressed={value === o}
         >

@@ -3464,6 +3464,7 @@ select {
 }
 
 .chip-accent,
+.chip-agent,
 .badge-agent,
 .log-chip-agent,
 .tag-agent,
@@ -4061,3 +4062,82 @@ textarea {
 .fatal-detail {
   border-color: var(--border);
 }
+
+/* ==========================================================================
+   Utilities — the small set that replaced ~200 inline styles
+   Colour, spacing, type size, flow. Anything geometric or data-driven
+   (bar widths, grid column templates) stays inline; it is data, not style.
+   ========================================================================== */
+
+.c-1 { color: var(--text); }
+.c-2 { color: var(--text-2); }
+.c-3 { color: var(--text-3); }
+.c-ok { color: var(--ok); }
+.c-warn { color: var(--warn); }
+.c-danger { color: var(--danger); }
+.c-accent { color: var(--accent); }
+
+.fs-1 { font-size: var(--fs-1); }
+.fs-2 { font-size: var(--fs-2); }
+.fs-3 { font-size: var(--fs-3); }
+.fs-4 { font-size: var(--fs-4); }
+.fw-5 { font-weight: 500; }
+.fw-6 { font-weight: 600; }
+
+.m-0 { margin: 0; }
+.m-2 { margin: 8px; }
+.mt-1 { margin-top: 4px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.mt-4 { margin-top: 16px; }
+.mb-0 { margin-bottom: 0; }
+.mb-2 { margin-bottom: 8px; }
+.mb-3 { margin-bottom: 12px; }
+.ml-auto { margin-left: auto; }
+.mr-2 { margin-right: 8px; }
+.mx-2 { margin-left: 8px; margin-right: 8px; }
+.p-0 { padding: 0; }
+.py-1 { padding-top: 4px; padding-bottom: 4px; }
+.pt-3 { padding-top: 12px; }
+.pb-3 { padding-bottom: 12px; }
+
+.min0 { min-width: 0; }
+.w-full { width: 100%; }
+.flex-1 { flex: 1 1 0; min-width: 0; }
+.flex-none { flex: none; }
+.rel { position: relative; }
+.span-all { grid-column: 1 / -1; }
+.ta-r { text-align: right; }
+.ta-l { text-align: left; }
+.nowrap { white-space: nowrap; }
+.wrap { white-space: normal; }
+.scroll-x { overflow-x: auto; }
+
+.row { display: flex; align-items: center; gap: 8px; }
+.row-inline { display: inline-flex; align-items: center; gap: 8px; }
+.row-base { align-items: baseline; }
+.row-wrap { flex-wrap: wrap; }
+.stack-1 { display: grid; gap: 4px; }
+.stack-2 { display: grid; gap: 8px; }
+.stack-3 { display: grid; gap: 12px; }
+.list { list-style: none; margin: 0; padding: 0; }
+.ul { margin: 0; padding-left: 18px; }
+.ml-2 { margin-left: 8px; }
+.pl-3 { padding-left: 12px; }
+.abs-l { position: absolute; left: 0; }
+.bb { border-bottom: 1px solid var(--border); }
+.bt { border-top: 1px solid var(--border); }
+.cols-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap); align-items: start; }
+.cols-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: start; }
+.tbl-row.is-open { background: var(--surface-2); }
+
+/* Small page-specific pieces that used to be inline objects. */
+.tabbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px var(--pad); border-bottom: 1px solid var(--border); }
+.sort-btn { font: inherit; color: inherit; padding: 0; white-space: nowrap; text-align: left; }
+.sort-btn.tbl-right { text-align: right; }
+.matrix { display: grid; grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.matrix-axis { background: var(--surface); padding: 8px 10px; display: flex; align-items: center; }
+.ladder-step { display: grid; grid-template-columns: 28px minmax(0, 1fr) 96px; gap: 12px; align-items: start; padding: 9px 0; border-bottom: 1px solid var(--border); position: relative; }
+.ladder-step:last-child { border-bottom: 0; }
+.ladder-n { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--surface-2); font-size: var(--fs-1); font-weight: 600; }
+.drawer-inset { background: var(--surface-2); padding: 12px 16px 14px; border-bottom: 1px solid var(--border); }

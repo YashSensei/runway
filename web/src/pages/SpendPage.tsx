@@ -39,7 +39,7 @@ export default function SpendPage(props: PageProps) {
 
   return (
     <div className="page page-cols-7-5">
-      <div className="stack" style={{ minWidth: 0 }}>
+      <div className="stack min0">
         {state.escalations.length > 0 ? (
           <EscalationWorkspace
             escalations={state.escalations}
@@ -50,7 +50,7 @@ export default function SpendPage(props: PageProps) {
         <RequestInbox decisions={state.decisions} openDecision={openDecision} />
       </div>
 
-      <div className="stack" style={{ minWidth: 0 }}>
+      <div className="stack min0">
         <NewRequestForm {...props} />
         <VendorDirectory {...props} />
         <DepartmentBudgets {...props} />
@@ -78,7 +78,7 @@ function EscalationWorkspace({
       className="panel-auto"
       bodyClassName="panel-body-esc"
       right={
-        <span className="badge badge-danger">
+        <span className="chip chip-danger">
           <i className="dot" />
           {escalations.length} awaiting you
         </span>
@@ -163,7 +163,7 @@ function EscalationWorkCard({
     <article className="esc">
       <header className="esc-head">
         <span className="esc-head-title">CFO review required</span>
-        <span className="chip" style={{ color: "var(--text-2)" }}>
+        <span className="chip c-2">
           {reasonLabel(decision.reasonCode)}
         </span>
         <span className="esc-head-time">
@@ -171,17 +171,9 @@ function EscalationWorkCard({
         </span>
       </header>
 
-      <div
-        className="esc-body"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-          gap: "0 18px",
-          paddingBottom: 12,
-        }}
-      >
+      <div className="esc-body cols-2 pb-3">
         {/* Left: the request and the agent's account of it */}
-        <div style={{ minWidth: 0 }}>
+        <div className="min0">
           <div className="esc-amount">
             <span className="esc-amount-value">{lakh(request.amount)}</span>
             <span className="esc-amount-exact">{rupees(request.amount)}</span>
@@ -203,7 +195,7 @@ function EscalationWorkCard({
               <button
                 type="button"
                 className="btn btn-sm btn-ghost"
-                style={{ padding: "0 4px", fontSize: 10, letterSpacing: "0.13em" }}
+                
                 onClick={() => openDecision(decision.id)}
               >
                 open audit record
@@ -213,8 +205,8 @@ function EscalationWorkCard({
         </div>
 
         {/* Right: the seven rules, the headroom bar, the CFO's controls */}
-        <div style={{ minWidth: 0 }}>
-          <div className="audit-section-title" style={{ marginTop: 2 }}>
+        <div className="min0">
+          <div className="audit-section-title mt-1">
             Rules applied
           </div>
           <RuleList rules={decision.rules} />
@@ -223,8 +215,8 @@ function EscalationWorkCard({
             <div className="headroom-line">
               <span className="headroom-label">where this lands</span>
               <span className="headroom-figs">
-                headroom <span style={{ color: "var(--text)" }}>{lakh(headroom)}</span> →{" "}
-                <span style={{ color: landing < 0 ? "var(--danger)" : "var(--ok)" }}>
+                headroom <span className="c-1">{lakh(headroom)}</span> →{" "}
+                <span className={landing < 0 ? "c-danger" : "c-ok"}>
                   {lakh(landing)}
                   {landing < 0 ? " · past zero" : " left"}
                 </span>
@@ -233,7 +225,7 @@ function EscalationWorkCard({
             <LandingBar headroom={headroom} amount={request.amount} />
           </div>
 
-          <label style={{ display: "block", marginTop: 12 }}>
+          <label className="mt-3">
             <span className="field-label">Note (optional, recorded on the decision)</span>
             <textarea
               value={note}
@@ -245,15 +237,7 @@ function EscalationWorkCard({
             />
           </label>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-              gap: 6,
-              marginTop: 8,
-            }}
-            aria-busy={busy}
-          >
+          <div className="cols-3 mt-2" aria-busy={busy}>
             <ActionButton
               className="btn-approve"
               label="Approve"
@@ -277,24 +261,23 @@ function EscalationWorkCard({
             />
           </div>
 
-          <div style={{ marginTop: 8 }}>
+          <div className="mt-2">
             <button
               type="button"
-              className={`btn btn-why btn-sm${pending === "reevaluate" ? " btn-pending" : ""}`}
+              className={`btn btn-why btn-sm w-full${pending === "reevaluate" ? " btn-pending" : ""}`}
               disabled={busy}
               onClick={() => void act("reevaluate")}
-              style={{ width: "100%" }}
             >
               {pending === "reevaluate" ? "Re-evaluating…" : "Re-evaluate against today's forecast"}
             </button>
-            <div className="state-delta" style={{ marginTop: 4 }}>
+            <div className="state-delta mt-1">
               Cash may have moved since this was escalated — a collection landing or a rule change
               can turn this into an approval without you touching it.
             </div>
           </div>
 
           {error !== null ? (
-            <div className="inline-alert" role="alert" style={{ marginTop: 10, marginBottom: 0 }}>
+            <div className="inline-alert mt-2 mb-0" role="alert">
               <span className="inline-alert-title">Not recorded</span>
               <span className="inline-alert-body">{error}</span>
             </div>
@@ -349,9 +332,9 @@ function RuleList({
           <div
             key={rule.rule}
             className={`rule ${skip ? "" : rule.passed ? "rule-pass" : "rule-fail"}`}
-            style={{ gridTemplateColumns: "18px 150px minmax(0, 1fr)", fontSize: 12 }}
+            style={{ gridTemplateColumns: "18px 150px minmax(0, 1fr)" }}
           >
-            <span className="rule-mark" style={skip ? { color: "var(--text-3)" } : undefined}>
+            <span className="rule-mark" style={skip ? { color: "c-3" } : undefined}>
               {skip ? "–" : rule.passed ? "✓" : "✕"}
             </span>
             <span className="rule-name">
@@ -360,7 +343,7 @@ function RuleList({
                 {skip ? "not checked" : rule.passed ? "pass" : rule.severity === "hard" ? "fail · reject" : "fail · escalate"}
               </span>
             </span>
-            <span className="rule-detail" style={{ color: skip ? "var(--text-3)" : undefined }}>
+            <span className={`rule-detail ${skip ? "c-3" : ""}`}>
               {skip
                 ? "Category baseline lives on the server — checked on submit."
                 : rule.detail}
@@ -386,8 +369,8 @@ function LandingBar({ headroom, amount }: { headroom: number; amount: number }) 
   const pct = (v: number) => `${(clamp01(v / scale) * 100).toFixed(2)}%`;
 
   return (
-    <div style={{ marginTop: 6 }}>
-      <div style={{ position: "relative" }}>
+    <div className="mt-1">
+      <div className="rel">
         <div
           className="hbar"
           role="img"
@@ -398,7 +381,7 @@ function LandingBar({ headroom, amount }: { headroom: number; amount: number }) 
                 ? `${rupees(amount)} exceeds ${rupees(available)} of headroom by ${rupees(over)}`
                 : `${rupees(amount)} of ${rupees(available)} headroom, leaving ${rupees(available - amount)}`
           }
-          style={{ display: "flex", marginTop: 0 }}
+ style={{ display: "flex" }}
         >
           <div className="hbar-fill" style={{ width: pct(inside) }} />
           {over > 0 ? <div className="hbar-fill hbar-fill-danger" style={{ width: pct(over) }} /> : null}
@@ -412,8 +395,7 @@ function LandingBar({ headroom, amount }: { headroom: number; amount: number }) 
         ) : null}
       </div>
       <div
-        className="headroom-line"
-        style={{ marginTop: 4, fontSize: 10.5 }}
+        className="headroom-line mt-1 fs-1"
       >
         <span className="mono">0</span>
         <span className="mono">
@@ -504,16 +486,7 @@ function RequestInbox({
       bodyClassName="panel-body-flush"
       right={<span className="panel-note">{plural(latest.length, "request")} · latest decision per request</span>}
     >
-      <div
-        style={{
-          display: "flex",
-          gap: 6,
-          padding: "8px 14px",
-          borderBottom: "1px solid var(--line)",
-          flexWrap: "wrap",
-        }}
-        role="tablist"
-      >
+      <div className="tabbar" role="tablist">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -532,7 +505,7 @@ function RequestInbox({
       </div>
 
       {reevalError !== null ? (
-        <div className="inline-alert" role="alert" style={{ margin: 10 }}>
+        <div className="inline-alert m-2" role="alert">
           <span className="inline-alert-title">Not recorded</span>
           <span className="inline-alert-body">{reevalError}</span>
           <button type="button" className="btn btn-sm btn-ghost" onClick={() => setReevalError(null)}>
@@ -564,7 +537,7 @@ function RequestInbox({
                 role="button"
                 tabIndex={0}
                 className="tbl-row log-row-clickable"
-                style={{ gridTemplateColumns: INBOX_COLUMNS, fontSize: 12 }}
+                style={{ gridTemplateColumns: INBOX_COLUMNS }}
                 title={`${v.decision.id} · ${v.request.id} · open audit record`}
                 onClick={() => openDecision(v.decision.id)}
                 onKeyDown={(e) => {
@@ -586,12 +559,12 @@ function RequestInbox({
                 <span className="tbl-ellipsis tbl-dim">{reasonLabel(v.decision.reasonCode)}</span>
                 <span>
                   {v.decision.actor === "cfo" ? (
-                    <span className="tag-human">CFO</span>
+                    <span className="chip">CFO</span>
                   ) : (
-                    <span className="tag-agent">Agent</span>
+                    <span className="chip chip-accent">Agent</span>
                   )}
                 </span>
-                <span style={{ textAlign: "right" }}>
+                <span className="ta-r">
                   {deferred ? (
                     <button
                       type="button"
@@ -724,7 +697,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
           e.preventDefault();
           void submit();
         }}
-        style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 12px" }}
+        className="cols-2"
       >
         <Field label="Department">
           <select
@@ -747,7 +720,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
             <>
               Vendor
               {vendor && vendor.invoiceCount === 0 ? (
-                <span className="rule-sev" style={{ color: "var(--warn)" }}>
+                <span className="rule-sev c-warn">
                   first-time vendor
                 </span>
               ) : null}
@@ -794,11 +767,11 @@ function NewRequestForm({ state, openDecision }: PageProps) {
             className="field"
           />
           {amount !== null ? (
-            <div className="state-delta" style={{ marginTop: 3 }}>
+            <div className="state-delta mt-1">
               {rupees(amount)} · {lakh(amount)}
             </div>
           ) : amountText.trim() ? (
-            <div className="state-delta" style={{ marginTop: 3, color: "var(--warn)" }}>
+            <div className="state-delta mt-1 c-warn">
               whole rupees only — no decimals
             </div>
           ) : null}
@@ -835,7 +808,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
           />
         </Field>
 
-        <div style={{ gridColumn: "1 / -1" }}>
+        <div className="span-all">
           <Field label="Description">
             <input
               value={description}
@@ -848,7 +821,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
           </Field>
         </div>
 
-        <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="span-all row">
           <button
             type="submit"
             className={`btn btn-why${pending ? " btn-pending" : ""}`}
@@ -857,14 +830,14 @@ function NewRequestForm({ state, openDecision }: PageProps) {
           >
             {pending ? "Deciding…" : "Submit to the engine"}
           </button>
-          <span className="panel-note" style={{ whiteSpace: "normal" }}>
+          <span className="panel-note wrap">
             Idempotent · a fresh key per submit, so a retry never double-reserves.
           </span>
         </div>
       </form>
 
       {error !== null ? (
-        <div className="inline-alert" role="alert" style={{ marginTop: 12, marginBottom: 0 }}>
+        <div className="inline-alert mt-3 mb-0" role="alert">
           <span className="inline-alert-title">Not accepted</span>
           <span className="inline-alert-body">{error}</span>
         </div>
@@ -874,9 +847,9 @@ function NewRequestForm({ state, openDecision }: PageProps) {
         <SubmittedResult result={submitted} openDecision={openDecision} />
       ) : null}
 
-      <div style={{ marginTop: 14, borderTop: "1px solid var(--line)", paddingTop: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <span className="audit-section-title" style={{ marginBottom: 0 }}>
+      <div className="mt-3 bt pt-3">
+        <div className="row mb-2">
+          <span className="audit-section-title mb-0">
             Preview — cash impact estimated
           </span>
           {preview ? (
@@ -889,7 +862,7 @@ function NewRequestForm({ state, openDecision }: PageProps) {
         {preview ? (
           <>
             <RuleList rules={preview.rules} unchecked={preview.unchecked} />
-            <div className="state-delta" style={{ marginTop: 6 }}>
+            <div className="state-delta mt-1">
               Runs the same rules engine on the last polled forecast; the server re-forecasts on
               submit. Headroom after: <span className="mono">{lakh(preview.headroomAfter)}</span>.
             </div>
@@ -911,17 +884,16 @@ function SubmittedResult({
 }) {
   const { decision, request } = result;
   return (
-    <div className="esc-narration" style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
+    <div className="esc-narration mt-3">
+      <div className="row mb-2 row-wrap">
         <span className={`outcome outcome-${decision.outcome}`}>{decision.outcome}</span>
-        <span className="mono" style={{ fontSize: 12.5 }}>
+        <span className="mono fs-2">
           {rupees(request.amount)}
         </span>
         <span className="panel-note">{reasonLabel(decision.reasonCode)}</span>
         <button
           type="button"
-          className="btn btn-sm btn-ghost"
-          style={{ marginLeft: "auto" }}
+          className="btn btn-sm btn-ghost ml-auto"
           onClick={() => openDecision(decision.id)}
         >
           Open audit record
@@ -937,7 +909,7 @@ function SubmittedResult({
 
 function Field({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
-    <label style={{ display: "block", minWidth: 0 }}>
+    <label className="min0">
       <span className="field-label">{label}</span>
       {children}
     </label>
@@ -977,13 +949,13 @@ function VendorDirectory({ state }: PageProps) {
               <div
                 key={v.id}
                 className="tbl-row"
-                style={{ gridTemplateColumns: VENDOR_COLUMNS, fontSize: 12 }}
+                style={{ gridTemplateColumns: VENDOR_COLUMNS }}
                 title={`${v.id} · ${plural(spend.count, "approved request")} in the window · ${rupees(spend.total)} total`}
               >
                 <span className="tbl-ellipsis">
                   {v.name}
                   {v.invoiceCount === 0 ? (
-                    <span className="rule-sev" style={{ color: "var(--warn)" }}>
+                    <span className="rule-sev c-warn">
                       first-time
                     </span>
                   ) : null}
@@ -1036,18 +1008,18 @@ function DepartmentBudgets({ state, openDecision }: PageProps) {
           const ceilingRupees = Math.round(d.quarterlyBudget * ceiling);
           const remaining = ceilingRupees - d.periodSpend;
           const fill = ratio > ceiling ? "bar-fill-danger" : ratio > 0.85 ? "bar-fill-warn" : "";
-          const pctColor = ratio > ceiling ? "var(--danger)" : ratio > 0.85 ? "var(--warn)" : "var(--text)";
+          const pctColor = ratio > ceiling ? "c-danger" : ratio > 0.85 ? "c-warn" : "c-1";
           const approved = approvedForDepartment(state.decisions, d.id);
 
           return (
-            <div className="dept" key={d.id} style={{ paddingBottom: 10 }}>
+            <div className="dept pb-3" key={d.id}>
               <div className="dept-line">
                 <span className="dept-name">{d.name}</span>
                 <span className="dept-figures">
-                  <span style={{ color: "var(--text)" }}>{lakh(d.periodSpend)}</span>
+                  <span className="c-1">{lakh(d.periodSpend)}</span>
                   {" / "}
                   {lakh(d.quarterlyBudget)}
-                  <span className="dept-pct" style={{ color: pctColor }}>
+                  <span className={`dept-pct ${pctColor}`}>
                     {percent(ratio)}
                   </span>
                 </span>
@@ -1061,7 +1033,7 @@ function DepartmentBudgets({ state, openDecision }: PageProps) {
                 <span className="bar-tick" style={{ left: pos(1) }} />
                 <span className="bar-tick bar-tick-ceiling" style={{ left: pos(ceiling) }} />
               </div>
-              <div className="state-delta" style={{ marginTop: 5 }}>
+              <div className="state-delta mt-1">
                 {remaining >= 0
                   ? `${lakh(remaining)} left under the ${lakh(ceilingRupees)} ceiling`
                   : `${lakh(-remaining)} over the ${lakh(ceilingRupees)} ceiling`}
@@ -1069,7 +1041,7 @@ function DepartmentBudgets({ state, openDecision }: PageProps) {
                 {plural(approved.length, "approved request")} this session
               </div>
               {approved.length > 0 ? (
-                <div style={{ marginTop: 4 }}>
+                <div className="mt-1">
                   {approved.map((v) => (
                     <button
                       key={v.decision.id}
@@ -1078,7 +1050,6 @@ function DepartmentBudgets({ state, openDecision }: PageProps) {
                       style={{
                         gridTemplateColumns: "58px minmax(0, 1fr) 40px 76px",
                         padding: "3px 0",
-                        fontSize: 11.5,
                         borderBottom: "none",
                       }}
                       onClick={() => openDecision(v.decision.id)}
@@ -1088,9 +1059,9 @@ function DepartmentBudgets({ state, openDecision }: PageProps) {
                       <span className="tbl-ellipsis tbl-dim">{v.vendorName} · {v.request.description}</span>
                       <span>
                         {v.decision.actor === "cfo" ? (
-                          <span className="tag-human" style={{ fontSize: 9.5 }}>CFO</span>
+                          <span className="chip">CFO</span>
                         ) : (
-                          <span className="tag-agent">Agent</span>
+                          <span className="chip chip-accent">Agent</span>
                         )}
                       </span>
                       <span className="mono tbl-right">{lakh(v.request.amount)}</span>

@@ -33,15 +33,15 @@ export function DecisionsPanel({ decisions, onOpen }: Props) {
           {ordered.length > 0 ? (
             <span className="chip-row">
               {counts.APPROVED > 0 ? (
-                <span className="outcome outcome-APPROVED">{counts.APPROVED} approved</span>
+                <span className="chip chip-ok">{counts.APPROVED} approved</span>
               ) : null}
               {counts.ESCALATED > 0 ? (
-                <span className="outcome outcome-ESCALATED">
+                <span className="chip chip-warn">
                   {counts.ESCALATED} escalated
                 </span>
               ) : null}
               {counts.REJECTED > 0 ? (
-                <span className="outcome outcome-REJECTED">{counts.REJECTED} rejected</span>
+                <span className="chip chip-danger">{counts.REJECTED} rejected</span>
               ) : null}
             </span>
           ) : null}

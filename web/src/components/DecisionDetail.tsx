@@ -86,7 +86,7 @@ export function DecisionRecord({ view, decisions, onOpenDecision }: RecordProps)
           {departmentName} · {vendorName} · {stamp(decision.createdAt)}
         </span>
         {isOverride ? <span className="chip chip-override">CFO override</span> : null}
-        {!isOverride ? <span className="tag-agent">Agent</span> : null}
+        {!isOverride ? <span className="chip chip-accent">Agent</span> : null}
       </div>
 
       {isOverride ? (
@@ -122,7 +122,7 @@ export function DecisionRecord({ view, decisions, onOpenDecision }: RecordProps)
           ) : null}
         </div>
       ) : decision.supersedes !== undefined ? (
-        <div className="override-link" style={{ marginTop: 8 }}>
+        <div className="override-link mt-2">
           re-evaluation of{" "}
           {onOpenDecision !== undefined ? (
             <button
@@ -138,7 +138,7 @@ export function DecisionRecord({ view, decisions, onOpenDecision }: RecordProps)
         </div>
       ) : null}
 
-      <div className="audit-context" style={{ marginTop: 10 }}>
+      <div className="audit-context mt-2">
         <span className="mono">{request.description}</span>
         <br />
         Reason code:{" "}

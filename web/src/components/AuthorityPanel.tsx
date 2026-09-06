@@ -30,12 +30,12 @@ export function AuthorityPanel({ state }: { state: DashboardState }) {
       className="panel-fill"
       right={
         suspended ? (
-          <span className="badge badge-danger">
+          <span className="chip chip-danger">
             <i className="dot" />
             suspended
           </span>
         ) : (
-          <span className="badge badge-ok">
+          <span className="chip chip-ok">
             <i className="dot" />
             in force
           </span>
@@ -74,12 +74,12 @@ export function AuthorityPanel({ state }: { state: DashboardState }) {
             {deficit ? "headroom deficit" : "headroom consumed"}
           </span>
           <span className="headroom-figs">
-            <span style={{ color: "var(--text)" }}>{lakh(reserved)}</span> reserved ·{" "}
-            <span style={{ color: deficit ? "var(--danger)" : "var(--ok)" }}>
+            <span className="c-1">{lakh(reserved)}</span> reserved ·{" "}
+            <span className={deficit ? "c-danger" : "c-ok"}>
               {deficit ? `${lakh(Math.abs(headroom))} short` : `${lakh(available)} available`}
             </span>
             {deficit ? (
-              <span style={{ color: "var(--danger)" }}> · no authority</span>
+              <span className="c-danger"> · no authority</span>
             ) : (
               <> · {percent(consumedPct)}</>
             )}

@@ -48,13 +48,13 @@ export function ReplayPanel({ replay }: { replay: ReplayResult | null }) {
     >
       <div className="replay">
         <div className="replay-figures">
-          <Fig value={replay.total} label="replayed" tone="var(--text)" />
-          <Fig value={replay.agreed} label="agreed with human" tone="var(--ok)" />
-          <Fig value={replay.flagged} label="flagged for review" tone="var(--warn)" />
+          <Fig value={replay.total} label="replayed" tone="c-1" />
+          <Fig value={replay.agreed} label="agreed with human" tone="c-ok" />
+          <Fig value={replay.flagged} label="flagged for review" tone="c-warn" />
           <Fig
             value={replay.flaggedThatWentOverBudget}
             label="flagged · went over budget"
-            tone="var(--danger)"
+            tone="c-danger"
           />
         </div>
 
@@ -94,7 +94,7 @@ export function ReplayPanel({ replay }: { replay: ReplayResult | null }) {
             </span>
             <span>
               {row.request.wentOverBudget ? (
-                <span className="outcome outcome-REJECTED">went over budget</span>
+                <span className="chip chip-danger">went over budget</span>
               ) : (
                 <span className="tbl-dim">stayed within budget</span>
               )}
@@ -112,7 +112,7 @@ export function ReplayPanel({ replay }: { replay: ReplayResult | null }) {
 function Fig({ value, label, tone }: { value: number; label: string; tone: string }) {
   return (
     <div className="replay-fig">
-      <div className="replay-fig-value" style={{ color: tone }}>
+      <div className={`replay-fig-value ${tone}`}>
         {Number.isFinite(value) ? value : "—"}
       </div>
       <div className="replay-fig-label">{label}</div>

@@ -185,12 +185,12 @@ export function Shell({
             </span>
             <Heartbeat state={state} />
             {usingMock ? (
-              <span className="badge badge-mock">
+              <span className="chip chip-warn">
                 <i className="dot" />
                 Fixture data
               </span>
             ) : (
-              <span className={`badge ${staleSeconds === null ? "badge-live" : "badge-danger"}`}>
+              <span className={`chip ${staleSeconds === null ? "chip-ok" : "chip-danger"}`}>
                 <i className={`dot ${staleSeconds === null ? "dot-pulse" : ""}`} />
                 {staleSeconds === null ? "Live · " : "Stale · "}
                 {lastUpdated === null ? "—" : clock(new Date(lastUpdated).toISOString())}
@@ -258,10 +258,10 @@ function Heartbeat({ state }: { state: DashboardState }) {
   const now = useNow(1000);
 
   let text: string;
-  let tone = "badge-agent";
+  let tone = "chip-accent";
   if (!agent.autonomyEnabled) {
     text = "agent paused";
-    tone = "badge-danger";
+    tone = "chip-danger";
   } else if (agent.nextAlarmAt === null) {
     text = "agent idle";
     tone = "";
@@ -276,7 +276,7 @@ function Heartbeat({ state }: { state: DashboardState }) {
   }
 
   return (
-    <span className={`badge ${tone}`} title={heartbeatTitle(state)}>
+    <span className={`chip ${tone}`} title={heartbeatTitle(state)}>
       <i className={`dot ${agent.autonomyEnabled ? "dot-pulse" : ""}`} />
       {text}
     </span>

@@ -290,7 +290,7 @@ export default function CollectPage(props: PageProps) {
   return (
     <div className="page">
       {/* 1. Ageing header */}
-      <div className="stats" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
+      <div className="stats stats-5">
         {tiles.map((t) => (
           <div className={`stat ${tileTone(t.bucket, t.count)}`} key={t.bucket}>
             <span className="stat-label">{bucketLabel(t.bucket)}</span>
@@ -301,31 +301,21 @@ export default function CollectPage(props: PageProps) {
           </div>
         ))}
       </div>
-      <div
-        className="mono"
-        style={{
-          display: "flex",
-          gap: 18,
-          flexWrap: "wrap",
-          fontSize: 12.5,
-          color: "var(--text-2)",
-          padding: "0 2px",
-        }}
-      >
+      <div className="mono row row-wrap c-2">
         <span>
-          outstanding <b style={{ color: "var(--text)" }}>{lakh(totalOutstanding)}</b>{" "}
-          <span style={{ color: "var(--text-3)" }}>({rupees(totalOutstanding)})</span>
+          outstanding <b className="c-1">{lakh(totalOutstanding)}</b>{" "}
+          <span className="c-3">({rupees(totalOutstanding)})</span>
         </span>
         <span>·</span>
         <span>
-          committed <b style={{ color: "var(--ok)" }}>{lakh(totalCommitted)}</b>
+          committed <b className="c-ok">{lakh(totalCommitted)}</b>
         </span>
         <span>·</span>
         <span>
-          chased, awaiting reply <b style={{ color: "var(--text)" }}>{awaitingReply}</b>
+          chased, awaiting reply <b className="c-1">{awaitingReply}</b>
         </span>
         <span>·</span>
-        <span style={{ color: "var(--text-3)" }}>
+        <span className="c-3">
           ageing as of {shortDate(today)} (engine clock) · {plural(rows.length, "open invoice")}
         </span>
       </div>
@@ -342,7 +332,7 @@ export default function CollectPage(props: PageProps) {
         title="Receivables"
         bodyClassName="panel-body-flush"
         right={
-          <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+          <span className="row-inline">
             {FILTERS.map((f) => (
               <button
                 key={f.id}
@@ -369,7 +359,7 @@ export default function CollectPage(props: PageProps) {
         }
       >
         {chaseError !== null ? (
-          <div className="inline-alert" role="alert" style={{ margin: 10 }}>
+          <div className="inline-alert m-2" role="alert">
             <span className="inline-alert-title">Chase failed</span>
             <span className="inline-alert-body">
               <span className="mono">{chaseError.id}</span> — {chaseError.error}. Nothing was
@@ -386,7 +376,7 @@ export default function CollectPage(props: PageProps) {
             {rows.length === 0 ? "Nothing outstanding" : `No invoices match “${filterLabel(filter)}”`}
           </Empty>
         ) : (
-          <div className="tbl" style={{ overflowX: "auto" }}>
+          <div className="tbl scroll-x">
             <div className="tbl-head" style={{ gridTemplateColumns: TABLE_COLS }} aria-hidden="true">
               <span>customer</span>
               <span>invoice</span>
@@ -408,15 +398,11 @@ export default function CollectPage(props: PageProps) {
               return (
                 <div key={r.inv.id}>
                   <div
-                    className="tbl-row"
+                    className={`tbl-row tbl-row-clickable${isOpen ? " is-open" : ""}`}
                     role="button"
                     tabIndex={0}
                     aria-expanded={isOpen}
-                    style={{
-                      gridTemplateColumns: TABLE_COLS,
-                      cursor: "pointer",
-                      background: isOpen ? "var(--bg-raised)" : undefined,
-                    }}
+                    style={{ gridTemplateColumns: TABLE_COLS }}
                     onClick={() => setOpenId(isOpen ? null : r.inv.id)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -431,29 +417,24 @@ export default function CollectPage(props: PageProps) {
                     </span>
                     <span className="mono tbl-dim">{r.inv.id}</span>
                     <span className="mono tbl-right">{lakh(r.inv.amount)}</span>
-                    <span className="mono tbl-right" style={{ color: r.outstanding === 0 ? "var(--text-3)" : undefined }}>
+                    <span className={`mono tbl-right ${r.outstanding === 0 ? "c-3" : ""}`}>
                       {lakh(r.outstanding)}
                     </span>
                     <span className="mono tbl-dim inv-due">{shortDate(r.inv.dueDate)}</span>
-                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                    <span className="row-inline">
                       <span className="mono" style={{ minWidth: 26, textAlign: "right" }}>
                         {r.overdue}
                       </span>
                       <span className="chip">{r.bucket === "current" ? "current" : `${r.bucket}d`}</span>
                     </span>
-                    <span className="mono" style={{ fontSize: 12 }}>
+                    <span className="mono fs-1">
                       {r.week === null ? (
                         <span className="tbl-dim">beyond horizon</span>
                       ) : (
                         <>wk {r.week}</>
                       )}
                       {r.beforeBreach === null ? null : (
-                        <span
-                          style={{
-                            marginLeft: 6,
-                            color: r.beforeBreach ? "var(--ok)" : "var(--danger)",
-                          }}
-                        >
+                        <span className={`ml-2 ${r.beforeBreach ? "c-ok" : "c-danger"}`}>
                           {r.beforeBreach ? "before breach" : "after breach"}
                         </span>
                       )}
@@ -461,11 +442,11 @@ export default function CollectPage(props: PageProps) {
                     <span>
                       <StatusChip inv={r.inv} />
                     </span>
-                    <span className="mono tbl-dim" style={{ fontSize: 12 }}>
+                    <span className="mono tbl-dim fs-1">
                       {r.inv.chasedAt !== null ? clock(r.inv.chasedAt) : "—"}
                     </span>
                     <span
-                      style={{ display: "inline-flex", gap: 6, alignItems: "center" }}
+                    className="row-inline"
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
@@ -540,14 +521,7 @@ export default function CollectPage(props: PageProps) {
       </Panel>
 
       {/* 5 + 6. Simulate reply and customer reliability */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(320px, 5fr) minmax(0, 7fr)",
-          gap: "var(--gap)",
-          alignItems: "start",
-        }}
-      >
+      <div className="page-cols-5-7">
         <div ref={formRef}>
           <Panel
             title="Simulate customer reply"
@@ -556,7 +530,7 @@ export default function CollectPage(props: PageProps) {
             {replyEligible.length === 0 ? (
               <Empty>Every open invoice already carries a commitment</Empty>
             ) : (
-              <div style={{ display: "grid", gap: 10 }}>
+              <div className="stack-2">
                 <label>
                   <span className="field-label">Invoice (chased first)</span>
                   <select
@@ -579,7 +553,7 @@ export default function CollectPage(props: PageProps) {
                   </select>
                 </label>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="cols-2">
                   <label>
                     <span className="field-label">Amount (₹, partial allowed)</span>
                     <input
@@ -613,7 +587,7 @@ export default function CollectPage(props: PageProps) {
                 </div>
 
                 {replyTarget !== null ? (
-                  <p className="replay-note" style={{ fontSize: 12.5 }}>
+                  <p className="replay-note fs-2">
                     {replyAmountOk && replyAmountNum < replyTarget.outstanding ? (
                       <>
                         <b>{lakh(replyAmountNum)}</b> will be committed for{" "}
@@ -643,7 +617,7 @@ export default function CollectPage(props: PageProps) {
                       </>
                     )}
                     {!replyDateOk ? (
-                      <span style={{ color: "var(--danger)" }}>
+                      <span className="c-danger">
                         {" "}
                         Date is outside the horizon ({anchor} to {horizonEnd(anchor, horizon)}).
                       </span>
@@ -651,7 +625,7 @@ export default function CollectPage(props: PageProps) {
                   </p>
                 ) : null}
 
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div className="row">
                   <button
                     type="button"
                     className={`btn ${replyPending ? "btn-pending" : "btn-approve"}`}
@@ -667,23 +641,23 @@ export default function CollectPage(props: PageProps) {
                 </div>
 
                 {replyError !== null ? (
-                  <div className="inline-alert" role="alert" style={{ marginBottom: 0 }}>
+                  <div className="inline-alert mb-0" role="alert">
                     <span className="inline-alert-title">Not recorded</span>
                     <span className="inline-alert-body">{replyError}</span>
                   </div>
                 ) : null}
 
                 {replyResult !== null ? (
-                  <div className="principle" style={{ marginTop: 0 }}>
+                  <div className="principle">
                     Recovered <b className="mono">{lakh(replyResult.recovered)}</b> (
                     <span className="mono">{rupees(replyResult.recovered)}</span>) against{" "}
                     <span className="mono">{replyResult.invoiceId}</span>.
                     {replyActivity.length === 0 ? (
-                      <div className="panel-note" style={{ marginTop: 6 }}>
+                      <div className="panel-note mt-1">
                         waiting for the activity log to catch up…
                       </div>
                     ) : (
-                      <dl className="kv kv-tight" style={{ marginTop: 8 }}>
+                      <dl className="kv kv-tight mt-2">
                         {replyActivity.map((a) => (
                           <ActivityKv key={a.id} entry={a} />
                         ))}
@@ -721,8 +695,7 @@ export default function CollectPage(props: PageProps) {
                   </span>
                   <span className="mono tbl-right">{c.invoiceCount}</span>
                   <span
-                    className="mono tbl-right"
-                    style={{ color: c.avgLagDays > 30 ? "var(--warn)" : undefined }}
+                    className={`mono tbl-right${c.avgLagDays > 30 ? " c-warn" : ""}`}
                     title={c.avgLagDays > 30 ? "Historically slow payer" : "Pays close to terms"}
                   >
                     {c.avgLagDays}d{c.avgLagDays > 30 ? " slow" : ""}
@@ -731,7 +704,7 @@ export default function CollectPage(props: PageProps) {
                   <span className="mono tbl-right">
                     {c.chasedCount}/{c.invoiceCount}
                   </span>
-                  <span className="mono tbl-right" style={{ color: c.committedAmount > 0 ? "var(--ok)" : "var(--text-3)" }}>
+                  <span className={`mono tbl-right ${c.committedAmount > 0 ? "c-ok" : "c-3"}`}>
                     {c.committedAmount > 0 ? lakh(c.committedAmount) : "—"}
                   </span>
                 </div>
@@ -769,15 +742,15 @@ function PlanPanel({
         plan === null ? (
           <span className="panel-note">not run</span>
         ) : plan.breachWeek === null ? (
-          <span className="badge badge-ok">
+          <span className="chip chip-ok">
             <i className="dot" />
             no breach at last run
           </span>
         ) : (
           <span className="panel-note">
-            breach <b style={{ color: "var(--danger)" }}>week {plan.breachWeek}</b> · gap{" "}
-            <b style={{ color: "var(--danger)" }}>{lakh(plan.gap)}</b> · chased{" "}
-            <b style={{ color: "var(--agent)" }}>{lakh(plan.totalChased)}</b> across{" "}
+            breach <b className="c-danger">week {plan.breachWeek}</b> · gap{" "}
+            <b className="c-danger">{lakh(plan.gap)}</b> · chased{" "}
+            <b className="c-accent">{lakh(plan.totalChased)}</b> across{" "}
             {plural(targets.length, "account")} · skipped {skipped.length}
           </span>
         )
@@ -787,7 +760,7 @@ function PlanPanel({
         <Empty>No defence has run yet</Empty>
       ) : (
         <>
-          <div className="more-row" style={{ paddingTop: 10 }}>
+          <div className="more-row pt-3">
             chosen · ranked by score (timing 40% · size 30% · age 20% · reliability 10%)
           </div>
           {targets.length === 0 ? (
@@ -797,7 +770,7 @@ function PlanPanel({
                 : "Breach present but no eligible target"}
             </Empty>
           ) : (
-            <div className="tbl" style={{ overflowX: "auto" }}>
+            <div className="tbl scroll-x">
               <div className="tbl-head" style={{ gridTemplateColumns: PLAN_COLS }} aria-hidden="true">
                 <span>#</span>
                 <span>invoice</span>
@@ -827,11 +800,11 @@ function PlanPanel({
                   <span className="mono tbl-right">{lakh(t.invoice.amount)}</span>
                   <span className="mono tbl-right">{t.daysOverdue}d</span>
                   <span className="mono">wk {t.expectedArrivalWeek}</span>
-                  <span className="mono" style={{ color: t.landsBeforeBreach ? "var(--ok)" : "var(--danger)" }}>
+                  <span className={`mono ${t.landsBeforeBreach ? "c-ok" : "c-danger"}`}>
                     {t.landsBeforeBreach ? "yes — in time" : "no — too late"}
                   </span>
                   <span className="mono tbl-right">{t.score.toFixed(2)}</span>
-                  <span className="tbl-ellipsis" title={t.rationale} style={{ color: "var(--text-2)" }}>
+                  <span className="tbl-ellipsis c-2" title={t.rationale}>
                     {t.rationale}
                   </span>
                 </button>
@@ -839,7 +812,7 @@ function PlanPanel({
             </div>
           )}
 
-          <div className="more-row" style={{ paddingTop: 12 }}>skipped · with the reason it gave</div>
+          <div className="more-row pt-3">skipped · with the reason it gave</div>
           {skipped.length === 0 ? (
             <Empty>Nothing was skipped</Empty>
           ) : (
@@ -865,7 +838,7 @@ function PlanPanel({
                       {inv?.customer ?? <span className="tbl-dim">—</span>}
                       {sensitive ? <span className="rule-sev">sensitive</span> : null}
                     </span>
-                    <span style={{ color: sensitive ? "var(--warn)" : "var(--text-2)" }}>{s.reason}</span>
+                    <span className={sensitive ? "c-warn" : "c-2"}>{s.reason}</span>
                   </button>
                 );
               })}
@@ -916,22 +889,15 @@ function InvoiceDrawer({
   const dueIn = daysOverdue(today, inv.dueDate);
 
   return (
-    <div
-      style={{
-        borderBottom: "1px solid var(--line)",
-        borderLeft: "2px solid var(--agent)",
-        background: "var(--bg-inset)",
-        padding: "12px 16px 14px",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8 }}>
-        <span className="audit-section-title" style={{ marginBottom: 0 }}>
+    <div className="drawer-inset">
+      <div className="row row-base mb-2">
+        <span className="audit-section-title mb-0">
           Invoice {inv.id} · {inv.customer}
         </span>
-        <span className="mono" style={{ fontSize: 12, color: "var(--text-2)" }}>
+        <span className="mono fs-1 c-2">
           {lakh(inv.amount)} · {rupees(inv.amount)} · {inv.customerEmail}
         </span>
-        <button type="button" className="btn btn-sm btn-ghost" style={{ marginLeft: "auto" }} onClick={onClose}>
+        <button type="button" className="btn btn-sm btn-ghost ml-auto" onClick={onClose}>
           Close
         </button>
       </div>
@@ -944,7 +910,7 @@ function InvoiceDrawer({
         <Step n={2} done={row.overdue > 0} label={`Due · ${shortDate(inv.dueDate)}`}>
           {row.overdue > 0 ? (
             <>
-              <b style={{ color: "var(--danger)" }}>{row.overdue} days overdue</b> — ageing bucket{" "}
+              <b className="c-danger">{row.overdue} days overdue</b> — ageing bucket{" "}
               {bucketLabel(row.bucket)}. Customer historically runs {inv.customerAvgLagDays} days late.
             </>
           ) : (
@@ -960,23 +926,23 @@ function InvoiceDrawer({
             inv.chasedAt !== null ? (
               <span className="tbl-dim">Marked chased at {stamp(inv.chasedAt)}; the email is not in this state payload.</span>
             ) : inv.sensitive ? (
-              <span style={{ color: "var(--warn)" }}>
+              <span className="c-warn">
                 Not chased — relationship-sensitive; the agent holds these for you.
               </span>
             ) : (
               <span className="tbl-dim">Not chased.</span>
             )
           ) : (
-            <span style={{ display: "grid", gap: 4 }}>
+            <span className="stack-1">
               {chases.map((e) => {
                 const tone = toneFromSubject(e.message.subject);
                 return (
-                  <span key={e.id} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                    <span className="mono tbl-dim" style={{ fontSize: 11.5 }}>
+                  <span key={e.id} className="row row-wrap">
+                    <span className="mono tbl-dim fs-1">
                       {stamp(e.sentAt)}
                     </span>
-                    <span className={`log-chip ${toneChipClass(tone)}`}>{tone ?? "unknown tone"}</span>
-                    <span className={`log-chip ${e.result.simulated ? "log-chip-warn" : "log-chip-ok"}`}>
+                    <span className={`chip ${toneChipClass(tone)}`}>{tone ?? "unknown tone"}</span>
+                    <span className={`chip ${e.result.simulated ? "chip-warn" : "chip-ok"}`}>
                       {e.result.simulated ? "simulated" : e.result.ok ? "transmitted" : "failed"}
                     </span>
                     <span className="tbl-ellipsis" style={{ maxWidth: 420 }} title={e.message.subject}>
@@ -998,10 +964,10 @@ function InvoiceDrawer({
               {inv.chasedAt !== null && !committed ? "Awaiting reply." : "No reply recorded."}
             </span>
           ) : (
-            <span style={{ display: "grid", gap: 3 }}>
+            <span className="stack-1">
               {replies.map((a) => (
                 <span key={a.id}>
-                  <span className="mono tbl-dim" style={{ fontSize: 11.5, marginRight: 8 }}>
+                  <span className="mono tbl-dim fs-1 mr-2">
                     {stamp(a.createdAt)}
                   </span>
                   {a.summary}
@@ -1014,7 +980,7 @@ function InvoiceDrawer({
         <Step n={5} done={committed} label="Committed">
           {committed ? (
             <>
-              <b style={{ color: "var(--ok)" }}>{lakh(inv.committedAmount ?? 0)}</b> (
+              <b className="c-ok">{lakh(inv.committedAmount ?? 0)}</b> (
               <span className="mono">{rupees(inv.committedAmount ?? 0)}</span>) for{" "}
               <b>{inv.committedDate ? shortDate(inv.committedDate) : "—"}</b>
               {(inv.committedAmount ?? 0) < inv.amount ? " — a partial commitment" : " — in full"}.
@@ -1039,7 +1005,7 @@ function InvoiceDrawer({
             </>
           )}
           {row.residual > 0 ? (
-            <div style={{ marginTop: 4, color: "var(--warn)" }}>
+            <div className="mt-1 c-warn">
               <b className="mono">{lakh(row.residual)}</b> still outstanding, expected{" "}
               {weekText(residualWeek, horizon)} ({shortDate(residualArrivalDate(inv))}) — still chaseable.
             </div>
@@ -1064,11 +1030,11 @@ function Step({
   return (
     <div className={`rule ${done ? "rule-pass" : ""}`}>
       <span className="rule-mark">{n}</span>
-      <span className="rule-name" style={{ color: done ? "var(--text)" : undefined }}>
+      <span className={`rule-name ${done ? "c-1" : ""}`}>
         {label}
         {!done ? <span className="rule-sev">pending</span> : null}
       </span>
-      <span className="rule-detail" style={{ fontFamily: "var(--sans)", fontSize: 12.5 }}>
+      <span className="rule-detail fs-2">
         {children}
       </span>
     </div>
@@ -1096,16 +1062,7 @@ function SortHead({
     <button
       type="button"
       onClick={onClick}
-      className={right ? "tbl-right" : undefined}
-      style={{
-        font: "inherit",
-        letterSpacing: "inherit",
-        textTransform: "inherit",
-        color: active ? "var(--agent)" : "inherit",
-        padding: 0,
-        textAlign: right ? "right" : "left",
-        whiteSpace: "nowrap",
-      }}
+      className={`sort-btn${right ? " tbl-right" : ""}${active ? " c-accent" : ""}`}
       title={`Sort by ${label}`}
     >
       {label}
@@ -1117,11 +1074,11 @@ function SortHead({
 function StatusChip({ inv }: { inv: Invoice }) {
   if (isCommitted(inv)) {
     const partial = (inv.committedAmount ?? 0) < inv.amount;
-    return <span className="log-chip log-chip-ok">{partial ? "part committed" : "committed"}</span>;
+    return <span className="chip chip-ok">{partial ? "part committed" : "committed"}</span>;
   }
-  if (inv.status === "overdue") return <span className="log-chip log-chip-danger">overdue</span>;
-  if (inv.status === "paid") return <span className="log-chip">paid</span>;
-  return <span className="log-chip">open</span>;
+  if (inv.status === "overdue") return <span className="chip chip-danger">overdue</span>;
+  if (inv.status === "paid") return <span className="chip">paid</span>;
+  return <span className="chip">open</span>;
 }
 
 function ActivityKv({ entry }: { entry: ActivityEntry }) {
@@ -1130,7 +1087,7 @@ function ActivityKv({ entry }: { entry: ActivityEntry }) {
       <dt>
         {clock(entry.createdAt)} · {entry.type.replace(/_/g, " ")}
       </dt>
-      <dd style={{ textAlign: "left", whiteSpace: "normal", fontFamily: "var(--sans)" }}>{entry.summary}</dd>
+      <dd className="ta-l wrap">{entry.summary}</dd>
     </>
   );
 }
@@ -1155,11 +1112,11 @@ function filterLabel(f: Filter): string {
 function toneChipClass(tone: ReturnType<typeof toneFromSubject>): string {
   switch (tone) {
     case "gentle":
-      return "log-chip-ok";
+      return "chip-ok";
     case "firm":
-      return "log-chip-warn";
+      return "chip-warn";
     case "urgent":
-      return "log-chip-danger";
+      return "chip-danger";
     default:
       return "";
   }

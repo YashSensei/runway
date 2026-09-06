@@ -17,7 +17,7 @@ export function EmailPreview({ email, onClose }: Props) {
       onClose={onClose}
       headerExtra={
         <span
-          className={`badge ${simulated ? "badge-mock" : "badge-ok"}`}
+          className={`chip ${simulated ? "chip-warn" : "chip-ok"}`}
           title={
             simulated
               ? "Rendered to the activity log, not handed to a mail provider"
@@ -34,7 +34,7 @@ export function EmailPreview({ email, onClose }: Props) {
           <span className="mail-key">To</span>
           <span className="mail-val">
             {message.toName}{" "}
-            <span className="mono" style={{ color: "var(--text-3)" }}>
+            <span className="mono c-3">
               &lt;{message.to}&gt;
             </span>
           </span>
@@ -43,7 +43,7 @@ export function EmailPreview({ email, onClose }: Props) {
           <span className="mail-val mail-subject">{message.subject}</span>
 
           <span className="mail-key">Sent</span>
-          <span className="mail-val mono" style={{ fontSize: 12.5 }}>
+          <span className="mail-val mono fs-2">
             {stamp(email.sentAt)}
           </span>
         </div>
@@ -53,16 +53,12 @@ export function EmailPreview({ email, onClose }: Props) {
 
       <div className="mail-foot">
         <span>
-          provider <b style={{ color: "var(--text-2)" }}>{result.provider}</b>
+          provider <b className="c-2">{result.provider}</b>
         </span>
         <span>·</span>
         <span>
           delivery{" "}
-          <b
-            style={{
-              color: result.ok ? "var(--ok)" : "var(--danger)",
-            }}
-          >
+          <b className={result.ok ? "c-ok" : "c-danger"}>
             {result.ok ? "accepted" : "failed"}
           </b>
         </span>
@@ -71,14 +67,13 @@ export function EmailPreview({ email, onClose }: Props) {
         <span>·</span>
         <span>{result.id ? `id ${result.id}` : `id — · ${email.id}`}</span>
         {result.error ? (
-          <span style={{ color: "var(--danger)" }}>· {result.error}</span>
+          <span className="c-danger">· {result.error}</span>
         ) : null}
       </div>
 
       {simulated ? (
         <div
-          className="mail-foot"
-          style={{ color: "var(--warn)", marginTop: 8 }}
+          className="mail-foot c-warn mt-2"
         >
           This message was composed and logged but not transmitted — no mail
           provider credential is configured for this run.

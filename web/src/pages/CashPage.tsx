@@ -121,7 +121,7 @@ export default function CashPage({ state }: PageProps) {
             className="panel-auto"
             right={
               projection !== null ? (
-                <span className="badge badge-agent">
+                <span className="chip chip-accent">
                   <i className="dot" />
                   hypothetical on
                 </span>
@@ -356,7 +356,7 @@ function WeekDrawer({
         </span>
         <span>
           closing{" "}
-          <b className="mono" style={{ color: week.belowThreshold ? "var(--danger)" : "var(--ok)" }}>
+          <b className={`mono ${week.belowThreshold ? "c-danger" : "c-ok"}`}>
             {lakh(week.closingCash)}
           </b>
           {week.belowThreshold ? <span className="wk-flag">below floor</span> : null}

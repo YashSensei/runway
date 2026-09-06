@@ -62,12 +62,12 @@ export default function InsightsPage(props: PageProps) {
             them, so treat the result as proof that the engine can be pointed at historical data
             and made to explain itself, not as evidence that its judgement is good.
           </p>
-          <p className="replay-note" style={{ marginTop: 8 }}>
+          <p className="replay-note mt-2">
             Not run yet. Press <span className="key">d</span> → replay in the demo controls, or
             use the button above.
           </p>
           {runError !== null ? (
-            <div className="inline-alert" role="alert" style={{ marginTop: 10, marginBottom: 0 }}>
+            <div className="inline-alert mt-2 mb-0" role="alert">
               <span className="inline-alert-title">Replay failed</span>
               <span className="inline-alert-body">{runError}</span>
             </div>
@@ -172,39 +172,32 @@ function ReplayView({
           </div>
         ) : null}
         <div className="replay-figures" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
-          <Fig value={String(replay.total)} label="replayed" tone="var(--text)" />
-          <Fig value={String(replay.agreed)} label="agreed with human" tone="var(--ok)" />
-          <Fig value={String(replay.flagged)} label="flagged for review" tone="var(--warn)" />
+          <Fig value={String(replay.total)} label="replayed" tone="c-1" />
+          <Fig value={String(replay.agreed)} label="agreed with human" tone="c-ok" />
+          <Fig value={String(replay.flagged)} label="flagged for review" tone="c-warn" />
           <Fig
             value={String(replay.flaggedThatWentOverBudget)}
             label="flagged · went over budget (hand-set label)"
-            tone="var(--danger)"
+            tone="c-danger"
           />
           <Fig
             value={
               <>
                 {turnaround}
-                <span style={{ color: "var(--text-3)", fontSize: 14, margin: "0 8px" }}>vs</span>
-                <span style={{ color: "var(--agent)" }}>&lt; 1s</span>
+                <span className="c-3 fs-3 mx-2">vs</span>
+                <span className="c-accent">&lt; 1s</span>
               </>
             }
             label="avg human turnaround vs agent (fixture figure)"
-            tone="var(--text)"
+            tone="c-1"
           />
         </div>
-        <p className="replay-caption" style={{ marginTop: 12 }}>
+        <p className="replay-caption mt-3">
           {CAPTION}
         </p>
       </Panel>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
-          gap: "var(--gap)",
-          alignItems: "stretch",
-        }}
-      >
+      <div className="cols-2">
         {/* 2. Confusion matrix */}
         <Panel
           title="Confusion matrix"
@@ -214,30 +207,20 @@ function ReplayView({
             </span>
           }
         >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "150px minmax(0, 1fr) minmax(0, 1fr)",
-              gap: 1,
-              background: "var(--line)",
-              border: "1px solid var(--line)",
-              borderRadius: 3,
-              overflow: "hidden",
-            }}
-          >
+          <div className="matrix">
             <Axis>human ↓ · agent →</Axis>
             <Axis>agent approved</Axis>
             <Axis>agent flagged (escalated or rejected)</Axis>
 
             <Axis>human approved</Axis>
-            <Cell value={matrix.aa} caption="co-approved — the only measurable agreement" tone="var(--ok)" />
-            <Cell value={matrix.af} caption="agent would have handed back a spend a human waved through" tone="var(--warn)" />
+            <Cell value={matrix.aa} caption="co-approved — the only measurable agreement" tone="c-ok" />
+            <Cell value={matrix.af} caption="agent would have handed back a spend a human waved through" tone="c-warn" />
 
             <Axis>human rejected</Axis>
-            <Cell value={matrix.ra} caption="agent approved a spend a human refused (false negative)" tone="var(--danger)" />
-            <Cell value={matrix.rf} caption="both said no" tone="var(--text)" />
+            <Cell value={matrix.ra} caption="agent approved a spend a human refused (false negative)" tone="c-danger" />
+            <Cell value={matrix.rf} caption="both said no" tone="c-1" />
           </div>
-          <p className="replay-note" style={{ marginTop: 10 }}>
+          <p className="replay-note mt-2">
             {humanRejections === 0 ? (
               <>
                 All {replay.total} rows are <b>humanDecision: &quot;approved&quot;</b>. The bottom row
@@ -265,7 +248,7 @@ function ReplayView({
           {attribution.list.length === 0 ? (
             <Empty>No rule failures — the agent approved every historical request</Empty>
           ) : (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="stack-2">
               {attribution.list.map((a) => {
                 const pct = attribution.max > 0 ? (a.count / attribution.max) * 100 : 0;
                 return (
@@ -273,12 +256,12 @@ function ReplayView({
                     <div className="dept-line">
                       <span className="dept-name">
                         {ruleLabel(a.rule)}{" "}
-                        <span className="mono" style={{ color: "var(--text-3)", fontSize: 11 }}>
+                        <span className="mono c-3 fs-1">
                           {a.rule}
                         </span>
                       </span>
                       <span className="dept-figures">
-                        <span className="mono" style={{ color: "var(--text)" }}>
+                        <span className="mono c-1">
                           {a.count}
                         </span>{" "}
                         of {attribution.flaggedRows}
@@ -294,7 +277,7 @@ function ReplayView({
                   </div>
                 );
               })}
-              <p className="replay-note" style={{ marginTop: 4 }}>
+              <p className="replay-note mt-1">
                 Cash rules (<span className="mono">min_cash_threshold</span>,{" "}
                 <span className="mono">headroom_check</span>) are neutralised in replay — the
                 historical cash position is not reconstructable. The budget rule is not
@@ -320,7 +303,7 @@ function ReplayView({
         {disagreements.length === 0 ? (
           <Empty>No disagreements to attribute</Empty>
         ) : (
-          <div className="tbl" style={{ overflowX: "auto" }}>
+          <div className="tbl scroll-x">
             <div className="tbl-head" style={{ gridTemplateColumns: DISAGREE_COLS }} aria-hidden="true">
               <span>request</span>
               <span>department</span>
@@ -377,7 +360,7 @@ function DisagreementRow({
       </span>
       <span>
         {row.request.wentOverBudget ? (
-          <span className="outcome outcome-REJECTED">yes</span>
+          <span className="chip chip-danger">yes</span>
         ) : (
           <span className="tbl-dim">no</span>
         )}
@@ -394,17 +377,7 @@ function HonestyPanel() {
       title="What this does not show"
       right={<span className="panel-note">all of it checkable in src/db/seed.ts</span>}
     >
-      <ul
-        style={{
-          margin: 0,
-          padding: "0 0 0 18px",
-          display: "grid",
-          gap: 8,
-          fontSize: 13,
-          lineHeight: 1.5,
-          color: "var(--text)",
-        }}
-      >
+      <ul className="ul stack-2 c-1">
         <li>
           <b>There are no human rejections.</b> All 47 rows are{" "}
           <span className="mono">humanDecision: &quot;approved&quot;</span>. &quot;Agreement&quot; can
@@ -441,7 +414,7 @@ function HonestyPanel() {
           is real; the comparison is not.
         </li>
       </ul>
-      <p className="replay-note" style={{ marginTop: 12 }}>
+      <p className="replay-note mt-3">
         <b>Why it is still here:</b> it is the same engine, it runs over data it did not decide,
         and every row opens to the rules that produced the outcome. That is the shape of a real
         validation harness. It is not a validation.
@@ -455,7 +428,7 @@ function HonestyPanel() {
 function Fig({ value, label, tone }: { value: ReactNode; label: string; tone: string }) {
   return (
     <div className="replay-fig">
-      <div className="replay-fig-value" style={{ color: tone, whiteSpace: "nowrap" }}>
+      <div className={`replay-fig-value nowrap ${tone}`}>
         {value}
       </div>
       <div className="replay-fig-label">{label}</div>
@@ -465,16 +438,7 @@ function Fig({ value, label, tone }: { value: ReactNode; label: string; tone: st
 
 function Axis({ children }: { children: ReactNode }) {
   return (
-    <div
-      className="stat-label"
-      style={{
-        background: "var(--bg-panel)",
-        padding: "8px 10px",
-        display: "flex",
-        alignItems: "center",
-        letterSpacing: "0.12em",
-      }}
-    >
+    <div className="stat-label matrix-axis">
       {children}
     </div>
   );
@@ -484,10 +448,10 @@ function Cell({ value, caption, tone }: { value: number; caption: string; tone: 
   const empty = value === 0;
   return (
     <div className="replay-fig" style={{ minHeight: 78 }}>
-      <div className="replay-fig-value" style={{ color: empty ? "var(--text-3)" : tone }}>
+      <div className={`replay-fig-value ${empty ? "c-3" : tone}`}>
         {empty ? "0 — empty" : value}
       </div>
-      <div className="replay-fig-label" style={{ textTransform: "none", letterSpacing: 0, fontSize: 11.5 }}>
+      <div className="replay-fig-label fs-1">
         {empty ? `no rows in this cell · ${caption}` : caption}
       </div>
     </div>

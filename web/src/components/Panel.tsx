@@ -9,7 +9,7 @@ export type PanelTier = "hero" | "primary" | "reference";
 
 interface Props {
   title: string;
-  /** Contextual count / badge / legend, right-aligned in the header. */
+  /** Contextual count / chip / legend, right-aligned in the header. */
   right?: ReactNode;
   className?: string;
   /** `panel-body-flush` for lists that draw their own row hairlines. */
@@ -20,7 +20,7 @@ interface Props {
 
 /**
  * The one panel chrome every tile on the board uses: uppercase tracked title
- * left, contextual badge right, hairline beneath, body that scrolls inside a
+ * left, contextual chip right, hairline beneath, body that scrolls inside a
  * fixed-height cell rather than growing the page.
  */
 export function Panel({ title, right, className, bodyClassName, tier, children }: Props) {
