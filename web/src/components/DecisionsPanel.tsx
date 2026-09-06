@@ -25,6 +25,7 @@ export function DecisionsPanel({ decisions, onOpen }: Props) {
   return (
     <Panel
       title="Decisions"
+      tier="reference"
       className="panel-fill"
       bodyClassName="panel-body-flush"
       right={

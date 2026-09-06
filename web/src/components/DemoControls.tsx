@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { postDemo } from "../api";
 import type { DemoResponse } from "../api";
 
@@ -15,33 +15,20 @@ const ACTIONS: Array<{ action: string; label: string }> = [
   { action: "replay", label: "replay" },
 ];
 
-/** Hidden by default. `d` toggles it. Never visible during normal use. */
-export function DemoControls() {
-  const [open, setOpen] = useState(false);
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+/**
+ * The presenter's panel. Opened from the rail's "Demo" entry or the `d` key
+ * (both handled by the shell); this component only renders and posts.
+ */
+export function DemoControls({ open, onClose }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [last, setLast] = useState<DemoResponse | null>(null);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "d" && e.key !== "D") return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = e.target;
-      if (
-        t instanceof HTMLInputElement ||
-        t instanceof HTMLTextAreaElement ||
-        (t instanceof HTMLElement && t.isContentEditable)
-      ) {
-        return;
-      }
-      setOpen((v) => !v);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  if (!open) {
-    return <div className="demo-hint">press d</div>;
-  }
+  if (!open) return null;
 
   const run = async (action: string) => {
     setBusy(action);
@@ -51,14 +38,14 @@ export function DemoControls() {
   };
 
   return (
-    <aside className="demo">
+    <aside className="demo" aria-label="Demo controls">
       <div className="demo-head">
         <span className="demo-title">Demo Controls</span>
         <button
           type="button"
           className="modal-close"
           style={{ marginLeft: "auto" }}
-          onClick={() => setOpen(false)}
+          onClick={onClose}
           aria-label="Close demo controls"
         >
           <svg width="10" height="10" viewBox="0 0 24 24" aria-hidden="true">
@@ -82,20 +69,14 @@ export function DemoControls() {
             onClick={() => void run(action)}
           >
             <span>{label}</span>
-            <span className="demo-btn-key">
-              {busy === action ? "..." : "POST"}
-            </span>
+            <span className="demo-btn-key">{busy === action ? "..." : "POST"}</span>
           </button>
         ))}
       </div>
 
       <div className="demo-status">
         <span>{last ? last.action : "no request yet"}</span>
-        <span
-          className={
-            last === null ? "" : last.ok ? "demo-status-ok" : "demo-status-bad"
-          }
-        >
+        <span className={last === null ? "" : last.ok ? "demo-status-ok" : "demo-status-bad"}>
           {last === null ? "—" : `${last.status || "ERR"} ${last.detail}`}
         </span>
       </div>

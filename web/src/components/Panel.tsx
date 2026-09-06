@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
 
+/**
+ * Visual weight. `hero` is what the agent just did; `primary` is what the CFO
+ * decides on; `reference` is everything one looks up. Reference panels take
+ * muted headings and lose their header badges so the eye lands elsewhere.
+ */
+export type PanelTier = "hero" | "primary" | "reference";
+
 interface Props {
   title: string;
   /** Contextual count / badge / legend, right-aligned in the header. */
@@ -7,6 +14,7 @@ interface Props {
   className?: string;
   /** `panel-body-flush` for lists that draw their own row hairlines. */
   bodyClassName?: string;
+  tier?: PanelTier;
   children: ReactNode;
 }
 
@@ -15,9 +23,12 @@ interface Props {
  * left, contextual badge right, hairline beneath, body that scrolls inside a
  * fixed-height cell rather than growing the page.
  */
-export function Panel({ title, right, className, bodyClassName, children }: Props) {
+export function Panel({ title, right, className, bodyClassName, tier, children }: Props) {
+  const classes = ["panel", tier ? `panel-${tier}` : "", className ?? ""]
+    .filter(Boolean)
+    .join(" ");
   return (
-    <section className={className ? `panel ${className}` : "panel"}>
+    <section className={classes}>
       <div className="panel-head">
         <span className="panel-title">{title}</span>
         {right !== undefined ? <span className="panel-right">{right}</span> : null}

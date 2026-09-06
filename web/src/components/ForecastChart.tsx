@@ -12,13 +12,19 @@ import {
   YAxis,
 } from "recharts";
 import type { TooltipProps } from "recharts";
-import type { Forecast, ForecastWeek } from "@shared/types";
+import type { Forecast, ForecastWeek, Rupees } from "@shared/types";
 import { lakh, lakhSigned, rupees, shortDate, toLakhs, weekLabel } from "../format";
+import { domainSamples, forecastsDiffer } from "../lib/forecastMath";
 import { Empty, Panel } from "./Panel";
+import type { PanelTier } from "./Panel";
 
 interface ChartRow {
   week: number;
   closing: number;
+  /** Last healthy forecast's closing, in lakhs; absent when identical. */
+  ghost?: number;
+  /** What-if closing, in lakhs; absent when no hypothetical is active. */
+  hyp?: number;
   below: boolean;
   raw: ForecastWeek;
 }
@@ -33,6 +39,8 @@ interface DotRenderProps {
 
 const OK = "#38b48b";
 const DANGER = "#d9494f";
+const GHOST = "#8794a6";
+const HYP = "#6d7ff2";
 const AXIS = "#8794a6";
 const GRID = "#161d27";
 const PANEL_BG = "#0e131a";
@@ -50,21 +58,62 @@ const MARGIN = { top: 10, right: 16, bottom: 2, left: 0 } as const;
 const X_AXIS_HEIGHT = 28;
 const PLOT_TOP = MARGIN.top;
 
-export function ForecastChart({ forecast }: { forecast: Forecast }) {
-  const wrapRef = useRef<HTMLDivElement>(null);
-  const height = useContentHeight(wrapRef);
+interface Props {
+  forecast: Forecast;
+  /**
+   * The last forecast computed while no breach existed. Drawn as a faint
+   * dashed ghost when it differs from the live line, and always folded into
+   * the Y-domain so the hole does not visually jump between scenes.
+   */
+  ghost?: Forecast | null;
+  /** What-if closing cash per live week (rupees). Drawn dashed in agent blue. */
+  hypothetical?: readonly Rupees[] | null;
+  /** Fixed wrapper height. Omit to fill the parent cell. */
+  height?: number;
+  title?: string;
+  tier?: PanelTier;
+  onWeekClick?: (week: number) => void;
+}
 
-  const rows: ChartRow[] = forecast.weeks.map((w) => ({
-    week: w.week,
-    closing: toLakhs(w.closingCash),
-    below: w.belowThreshold,
-    raw: w,
-  }));
+export function ForecastChart({
+  forecast,
+  ghost = null,
+  hypothetical = null,
+  height: fixedHeight,
+  title,
+  tier = "primary",
+  onWeekClick,
+}: Props) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const measured = useContentHeight(wrapRef);
+  const height = fixedHeight ?? measured;
+
+  const showGhost = forecastsDiffer(forecast, ghost);
+  const showHyp = hypothetical !== null && hypothetical.length > 0;
+
+  const rows: ChartRow[] = forecast.weeks.map((w, i) => {
+    const row: ChartRow = {
+      week: w.week,
+      closing: toLakhs(w.closingCash),
+      below: w.belowThreshold,
+      raw: w,
+    };
+    if (showGhost && ghost !== null) {
+      const g = ghost.weeks.find((x) => x.week === w.week);
+      if (g !== undefined) row.ghost = toLakhs(g.closingCash);
+    }
+    if (showHyp && hypothetical !== null) {
+      const h = hypothetical[i];
+      if (h !== undefined && Number.isFinite(h)) row.hyp = toLakhs(h);
+    }
+    return row;
+  });
 
   const thresholdL = toLakhs(forecast.threshold);
-  const values = rows.map((r) => r.closing);
-  const lo = Math.min(thresholdL, ...values);
-  const hi = Math.max(thresholdL, ...values);
+  // Domain from live + last-healthy + what-if together: stable across scenes.
+  const samplesL = domainSamples(forecast, ghost, hypothetical).map(toLakhs);
+  const lo = samplesL.length > 0 ? Math.min(...samplesL) : thresholdL;
+  const hi = samplesL.length > 0 ? Math.max(...samplesL) : thresholdL;
   const pad = Math.max(1.5, (hi - lo) * 0.15);
   // No clamp at zero: cash genuinely can go negative under a stress scenario,
   // and clipping it drew the line straight over the X-axis labels.
@@ -87,9 +136,10 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
 
   return (
     <Panel
-      title={`${forecast.weeks.length || 13}-Week Cash Forecast`}
+      title={title ?? `${forecast.weeks.length || 13}-Week Cash Forecast`}
       className="panel-fill"
       bodyClassName="panel-body-flush panel-body-chart"
+      tier={tier}
       right={
         <>
           <span className="chart-legend">
@@ -99,20 +149,43 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
             <span style={{ color: DANGER }}>
               <i className="swatch" /> below floor
             </span>
+            {showGhost ? (
+              <span style={{ color: GHOST }}>
+                <i className="swatch swatch-dash" /> last healthy
+              </span>
+            ) : null}
+            {showHyp ? (
+              <span style={{ color: HYP }}>
+                <i className="swatch swatch-dash" /> what-if
+              </span>
+            ) : null}
           </span>
           <span className="panel-note">
-            min {lakh(forecast.projectedMinimum)} ·{" "}
-            {weekLabel(forecast.projectedMinimumWeek)}
+            min {lakh(forecast.projectedMinimum)} · {weekLabel(forecast.projectedMinimumWeek)}
           </span>
         </>
       }
     >
-      <div className="chart-wrap" ref={wrapRef}>
+      <div
+        className="chart-wrap"
+        ref={wrapRef}
+        style={fixedHeight !== undefined ? { height: fixedHeight } : undefined}
+      >
         {rows.length === 0 ? (
           <Empty>No forecast weeks yet</Empty>
         ) : height > 40 ? (
           <ResponsiveContainer width="100%" height={height}>
-            <AreaChart data={rows} margin={{ ...MARGIN }}>
+            <AreaChart
+              data={rows}
+              margin={{ ...MARGIN }}
+              onClick={(e) => {
+                if (onWeekClick === undefined) return;
+                const label = (e as { activeLabel?: unknown } | null)?.activeLabel;
+                const week = typeof label === "number" ? label : Number(label);
+                if (Number.isFinite(week) && week > 0) onWeekClick(week);
+              }}
+              style={onWeekClick ? { cursor: "pointer" } : undefined}
+            >
               <defs>
                 <linearGradient
                   id="rw-stroke"
@@ -214,9 +287,7 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
                 strokeDasharray="5 4"
                 strokeOpacity={0.85}
                 ifOverflow="hidden"
-                label={
-                  <ThresholdLabel text={`SAFETY THRESHOLD ${lakh(forecast.threshold)}`} />
-                }
+                label={<ThresholdLabel text={`SAFETY THRESHOLD ${lakh(forecast.threshold)}`} />}
               />
 
               <Tooltip
@@ -224,7 +295,31 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
                 cursor={{ stroke: "#39465a", strokeWidth: 1 }}
               />
 
+              {/* Ghost under the live line: the pre-shock baseline. */}
+              {showGhost ? (
+                <Area
+                  key="ghost"
+                  type="monotone"
+                  dataKey="ghost"
+                  stroke={GHOST}
+                  strokeWidth={1.4}
+                  strokeDasharray="4 4"
+                  strokeOpacity={0.7}
+                  fill="none"
+                  fillOpacity={0}
+                  dot={false}
+                  activeDot={false}
+                  connectNulls
+                  isAnimationActive
+                  animationDuration={620}
+                  animationEasing="ease-out"
+                />
+              ) : null}
+
+              {/* Stable key so recharts tweens the live line between polls
+                  instead of remounting it. */}
               <Area
+                key="live"
                 type="monotone"
                 dataKey="closing"
                 stroke="url(#rw-stroke)"
@@ -236,6 +331,25 @@ export function ForecastChart({ forecast }: { forecast: Forecast }) {
                 animationDuration={620}
                 animationEasing="ease-out"
               />
+
+              {showHyp ? (
+                <Area
+                  key="hyp"
+                  type="monotone"
+                  dataKey="hyp"
+                  stroke={HYP}
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  fill="none"
+                  fillOpacity={0}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 1.5, stroke: "#0a0d12", fill: HYP }}
+                  connectNulls
+                  isAnimationActive
+                  animationDuration={420}
+                  animationEasing="ease-out"
+                />
+              ) : null}
             </AreaChart>
           </ResponsiveContainer>
         ) : null}
@@ -406,10 +520,7 @@ function ForecastTooltip(props: TooltipProps<number, string>) {
   return (
     <div className="tip">
       <div className="tip-head">
-        <span
-          className="tip-week"
-          style={{ color: w.belowThreshold ? DANGER : OK }}
-        >
+        <span className="tip-week" style={{ color: w.belowThreshold ? DANGER : OK }}>
           Week {w.week}
         </span>
         <span className="tip-date">{shortDate(w.startDate)}</span>
@@ -446,14 +557,23 @@ function ForecastTooltip(props: TooltipProps<number, string>) {
 
       <div className="tip-row tip-total">
         <span>closing</span>
-        <b style={{ color: w.belowThreshold ? DANGER : OK }}>
-          {rupees(w.closingCash)}
-        </b>
+        <b style={{ color: w.belowThreshold ? DANGER : OK }}>{rupees(w.closingCash)}</b>
       </div>
 
-      {w.belowThreshold ? (
-        <div className="tip-flag">below safety threshold</div>
+      {row.ghost !== undefined ? (
+        <div className="tip-row">
+          <span>last healthy</span>
+          <b style={{ color: GHOST }}>{`₹${row.ghost.toFixed(1)}L`}</b>
+        </div>
       ) : null}
+      {row.hyp !== undefined ? (
+        <div className="tip-row">
+          <span>what-if</span>
+          <b style={{ color: HYP }}>{`₹${row.hyp.toFixed(1)}L`}</b>
+        </div>
+      ) : null}
+
+      {w.belowThreshold ? <div className="tip-flag">below safety threshold</div> : null}
     </div>
   );
 }

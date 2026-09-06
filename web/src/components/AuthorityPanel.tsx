@@ -25,6 +25,7 @@ export function AuthorityPanel({ state }: { state: DashboardState }) {
   return (
     <Panel
       title="Delegated Authority"
+      tier="reference"
       className="panel-fill"
       right={
         suspended ? (

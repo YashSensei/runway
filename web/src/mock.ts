@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Development / offline fixture.
  *
  * This is the state the UI renders when `GET /api/state` is unreachable, and
@@ -8,18 +8,19 @@
  * from each other.
  *
  * Narrative encoded here (07 Sep 2026, Vertex Labs):
- *   09:05  baseline forecast, projected minimum ₹31.2L, no breach
- *   11:14  agent auto-approves ₹3.2L Engineering
- *   12:40  agent auto-approves ₹1.8L Marketing
- *   13:05  Northwind's ₹12.4L slips to November + Q2 GST lands in week 6
- *   13:05  forecast rebuilt — projected minimum ₹18.9L, week 7 breaches
+ *   09:05  baseline forecast, projected minimum ?31.2L, no breach
+ *   11:14  agent auto-approves ?3.2L Engineering
+ *   12:40  agent auto-approves ?1.8L Marketing
+ *   13:05  Northwind's ?12.4L slips to November + Q2 GST lands in week 6
+ *   13:05  forecast rebuilt � projected minimum ?18.9L, week 7 breaches
  *   13:07  agent chases Acme and Northwind, skips relationship-sensitive Kestrel
- *   14:22  Acme replies committing ₹8.2L by 30 Sep — forecast repairs to ₹23.6L
- *   14:52  Sales asks for ₹2.8L; no headroom left, first-time vendor -> escalate
+ *   14:22  Acme replies committing ?8.2L by 30 Sep � forecast repairs to ?23.6L
+ *   14:52  Sales asks for ?2.8L; no headroom left, first-time vendor -> escalate
  */
 
 import type {
   ActivityEntry,
+  AgentStatus,
   Company,
   DashboardState,
   Decision,
@@ -29,9 +30,12 @@ import type {
   Forecast,
   ForecastWeek,
   Invoice,
+  Payable,
   ReplayResult,
+  Reservation,
   SentEmail,
   SpendRequest,
+  Vendor,
 } from "@shared/types";
 
 // ---------------------------------------------------------------------------
@@ -56,7 +60,7 @@ const company: Company = {
 };
 
 // ---------------------------------------------------------------------------
-// Forecast — 13 weekly buckets, folded from the flow inputs
+// Forecast � 13 weekly buckets, folded from the flow inputs
 // ---------------------------------------------------------------------------
 
 const WEEK_STARTS = [
@@ -80,7 +84,7 @@ const COLLECTIONS = [
   11_50_000, // Zeta Labs INV-2038
   0,
   4_80_000, // Kestrel Media INV-2055
-  8_20_000, // Acme Corp — committed 30 Sep
+  8_20_000, // Acme Corp � committed 30 Sep
   0,
   2_60_000, // misc retainers
   0,
@@ -88,7 +92,7 @@ const COLLECTIONS = [
   10_25_000, // Orbital Systems INV-2049
   6_85_000, // Helios Manufacturing INV-2052
   7_85_000,
-  12_40_000, // Northwind INV-2044 — slipped to November
+  12_40_000, // Northwind INV-2044 � slipped to November
   4_80_000,
 ];
 
@@ -213,6 +217,52 @@ const departments: Department[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Vendors, payables, reservations
+// ---------------------------------------------------------------------------
+
+const vendors: Vendor[] = [
+  { id: "ven_nimbus", name: "Nimbus Cloud Services", firstSeen: "2024-11-03", invoiceCount: 14, avgAmount: 2_90_000 },
+  { id: "ven_sable", name: "Sable Design Studio", firstSeen: "2025-03-12", invoiceCount: 6, avgAmount: 1_50_000 },
+  { id: "ven_vertexevents", name: "Vertex Events", firstSeen: null, invoiceCount: 0, avgAmount: 0 },
+  { id: "ven_brightpixel", name: "BrightPixel Media", firstSeen: "2025-01-20", invoiceCount: 5, avgAmount: 2_10_000 },
+  { id: "ven_quilltools", name: "Quill Tools", firstSeen: "2025-06-02", invoiceCount: 2, avgAmount: 1_20_000 },
+  { id: "ven_statutory", name: "Statutory & Compliance", firstSeen: "2024-01-15", invoiceCount: 22, avgAmount: 2_40_000 },
+];
+
+/** Dated outflows, mirroring the `PAYABLES` buckets above by week. */
+const payables: Payable[] = [
+  { id: "AP-701", vendorId: "ven_nimbus", description: "Cloud infrastructure � September", amount: 2_85_000, scheduledDate: "2026-09-09", category: "infrastructure", discretionary: false },
+  { id: "AP-702", vendorId: "ven_quilltools", description: "Design tooling renewal", amount: 1_90_000, scheduledDate: "2026-09-23", category: "software", discretionary: true },
+  { id: "AP-703", vendorId: "ven_statutory", description: "Legal and statutory audit", amount: 4_15_000, scheduledDate: "2026-10-07", category: "compliance", discretionary: false },
+  { id: "AP-704", vendorId: "ven_statutory", description: "Q2 GST remittance", amount: 4_50_000, scheduledDate: "2026-10-14", category: "tax", discretionary: false },
+  { id: "AP-705", vendorId: "ven_statutory", description: "Annual insurance renewal", amount: 2_80_000, scheduledDate: "2026-10-21", category: "insurance", discretionary: false },
+  { id: "AP-706", vendorId: "ven_nimbus", description: "Cloud infrastructure � October", amount: 2_40_000, scheduledDate: "2026-11-04", category: "infrastructure", discretionary: false },
+  { id: "AP-707", vendorId: "ven_brightpixel", description: "Q4 campaign retainer", amount: 3_20_000, scheduledDate: "2026-11-11", category: "campaign", discretionary: true },
+  { id: "AP-708", vendorId: "ven_statutory", description: "Advance tax instalment", amount: 4_75_000, scheduledDate: "2026-11-25", category: "tax", discretionary: false },
+  { id: "AP-709", vendorId: "ven_nimbus", description: "Cloud infrastructure � November", amount: 2_10_000, scheduledDate: "2026-12-02", category: "infrastructure", discretionary: false },
+];
+
+const reservations: Reservation[] = [
+  { id: "RES-4471", requestId: "REQ-4471", amount: 3_20_000, week: 2, createdAt: "2026-09-07T11:14:07+05:30", releasedAt: null },
+  { id: "RES-4478", requestId: "REQ-4478", amount: 1_80_000, week: 4, createdAt: "2026-09-07T12:40:22+05:30", releasedAt: null },
+];
+
+const agent: AgentStatus = {
+  autonomyEnabled: true,
+  nextAlarmAt: "2026-09-07T14:53:00+05:30",
+  lastRunAt: "2026-09-07T14:52:30+05:30",
+  intervalMs: 30_000,
+  runs: [
+    { at: "2026-09-07T13:05:09+05:30", trigger: "alarm", projectedMinimum: 18_90_000, headroom: -6_10_000, breachWeek: 7, outcome: "chased", chased: 21_40_000 },
+    { at: "2026-09-07T14:23:11+05:30", trigger: "alarm", projectedMinimum: 23_60_000, headroom: -1_40_000, breachWeek: 7, outcome: "waiting_on_replies" },
+    { at: "2026-09-07T14:52:30+05:30", trigger: "alarm", projectedMinimum: 23_60_000, headroom: -1_40_000, breachWeek: 7, outcome: "waiting_on_replies" },
+  ],
+  emailProvider: "console",
+  llmProvider: "none",
+  guardrails: { cooldownDays: 3, maxTargets: 3, coverageFactor: 1.5 },
+};
+
+// ---------------------------------------------------------------------------
 // Receivables
 // ---------------------------------------------------------------------------
 
@@ -299,7 +349,7 @@ const reqEngineering: SpendRequest = {
   vendorId: "ven_nimbus",
   amount: 3_20_000,
   category: "infrastructure",
-  description: "Nimbus Cloud — Q4 reserved capacity, staging + inference tier",
+  description: "Nimbus Cloud � Q4 reserved capacity, staging + inference tier",
   requestedBy: "priya.n@vertexlabs.io",
   expectedWeek: 2,
   status: "approved",
@@ -313,7 +363,7 @@ const reqMarketing: SpendRequest = {
   vendorId: "ven_sable",
   amount: 1_80_000,
   category: "brand_design",
-  description: "Sable Design Studio — product launch identity refresh",
+  description: "Sable Design Studio � product launch identity refresh",
   requestedBy: "arjun.r@vertexlabs.io",
   expectedWeek: 4,
   status: "approved",
@@ -327,7 +377,7 @@ const reqSales: SpendRequest = {
   vendorId: "ven_vertexevents",
   amount: 2_80_000,
   category: "events",
-  description: "SaaSBoomi Annual — gold sponsorship + booth build",
+  description: "SaaSBoomi Annual � gold sponsorship + booth build",
   requestedBy: "meera.k@vertexlabs.io",
   expectedWeek: 5,
   status: "escalated",
@@ -344,46 +394,46 @@ const decEngineering: Decision = {
       rule: "max_autonomous_amount",
       passed: true,
       severity: "hard",
-      detail: "₹3.2L ≤ ₹5.0L delegated ceiling",
+      detail: "?3.2L = ?5.0L delegated ceiling",
     },
     {
       rule: "budget_overage",
       passed: true,
       severity: "hard",
-      detail: "Engineering at 62% of ₹42.0L quarterly budget · 69% after",
+      detail: "Engineering at 62% of ?42.0L quarterly budget � 69% after",
     },
     {
       rule: "require_vendor_history",
       passed: true,
       severity: "soft",
-      detail: "Nimbus Cloud Services — 14 prior invoices since Nov 2024",
+      detail: "Nimbus Cloud Services � 14 prior invoices since Nov 2024",
     },
     {
       rule: "anomaly_multiplier",
       passed: true,
       severity: "soft",
-      detail: "₹3.2L vs ₹2.9L infrastructure average — 1.1× · flag at 2.5×",
+      detail: "?3.2L vs ?2.9L infrastructure average � 1.1� � flag at 2.5�",
     },
     {
       rule: "min_cash_threshold",
       passed: true,
       severity: "hard",
-      detail: "Projected minimum stays at ₹28.0L, above the ₹25.0L floor",
+      detail: "Projected minimum stays at ?28.0L, above the ?25.0L floor",
     },
     {
       rule: "headroom_check",
       passed: true,
       severity: "soft",
-      detail: "₹6.2L available → ₹3.0L remaining after reservation",
+      detail: "?6.2L available ? ?3.0L remaining after reservation",
     },
   ],
   dataUsed: [
-    "Q3 department spend — Engineering",
+    "Q3 department spend � Engineering",
     "Q4 budget allocation",
-    "Current cash ₹52.0L",
+    "Current cash ?52.0L",
     "13-week forecast (09:05 IST)",
-    "Vendor history — Nimbus Cloud Services (14 invoices)",
-    "Category average — infrastructure (18 samples)",
+    "Vendor history � Nimbus Cloud Services (14 invoices)",
+    "Category average � infrastructure (18 samples)",
     "8 comparable requests",
     "Open reservations ledger",
   ],
@@ -393,7 +443,7 @@ const decEngineering: Decision = {
   projectedMinimumAfter: 28_00_000,
   narration: null,
   fallbackNarration:
-    "Approved. ₹3.2L is within the ₹5.0L delegated ceiling, Engineering is at 62% of its quarterly budget, Nimbus has 14 prior invoices, and the spend leaves projected minimum at ₹28.0L — ₹3.0L above your floor. Reserved against week 2.",
+    "Approved. ?3.2L is within the ?5.0L delegated ceiling, Engineering is at 62% of its quarterly budget, Nimbus has 14 prior invoices, and the spend leaves projected minimum at ?28.0L � ?3.0L above your floor. Reserved against week 2.",
   createdAt: "2026-09-07T11:14:07+05:30",
 };
 
@@ -407,45 +457,45 @@ const decMarketing: Decision = {
       rule: "max_autonomous_amount",
       passed: true,
       severity: "hard",
-      detail: "₹1.8L ≤ ₹5.0L delegated ceiling",
+      detail: "?1.8L = ?5.0L delegated ceiling",
     },
     {
       rule: "budget_overage",
       passed: true,
       severity: "hard",
-      detail: "Marketing at 67% of ₹18.0L quarterly budget · 77% after",
+      detail: "Marketing at 67% of ?18.0L quarterly budget � 77% after",
     },
     {
       rule: "require_vendor_history",
       passed: true,
       severity: "soft",
-      detail: "Sable Design Studio — 6 prior invoices since Mar 2025",
+      detail: "Sable Design Studio � 6 prior invoices since Mar 2025",
     },
     {
       rule: "anomaly_multiplier",
       passed: true,
       severity: "soft",
-      detail: "₹1.8L vs ₹1.5L brand_design average — 1.2× · flag at 2.5×",
+      detail: "?1.8L vs ?1.5L brand_design average � 1.2� � flag at 2.5�",
     },
     {
       rule: "min_cash_threshold",
       passed: true,
       severity: "hard",
-      detail: "Projected minimum stays at ₹26.2L, above the ₹25.0L floor",
+      detail: "Projected minimum stays at ?26.2L, above the ?25.0L floor",
     },
     {
       rule: "headroom_check",
       passed: true,
       severity: "soft",
-      detail: "₹3.0L available → ₹1.2L remaining after reservation",
+      detail: "?3.0L available ? ?1.2L remaining after reservation",
     },
   ],
   dataUsed: [
-    "Q3 department spend — Marketing",
+    "Q3 department spend � Marketing",
     "Q4 budget allocation",
     "13-week forecast (11:14 IST)",
-    "Vendor history — Sable Design Studio (6 invoices)",
-    "Category average — brand_design (11 samples)",
+    "Vendor history � Sable Design Studio (6 invoices)",
+    "Category average � brand_design (11 samples)",
     "Open reservations ledger",
   ],
   headroomBefore: 3_00_000,
@@ -453,9 +503,9 @@ const decMarketing: Decision = {
   projectedMinimumBefore: 28_00_000,
   projectedMinimumAfter: 26_20_000,
   narration:
-    "Approved, but this was the last comfortable one. ₹1.8L is small and Sable is a known vendor, yet it consumes most of what was left: headroom goes ₹3.0L → ₹1.2L and projected minimum sits ₹1.2L above your floor in week 7. Anything material after this will come back to you.",
+    "Approved, but this was the last comfortable one. ?1.8L is small and Sable is a known vendor, yet it consumes most of what was left: headroom goes ?3.0L ? ?1.2L and projected minimum sits ?1.2L above your floor in week 7. Anything material after this will come back to you.",
   fallbackNarration:
-    "Approved. ₹1.8L is within the ₹5.0L ceiling, Sable Design Studio has 6 prior invoices, and Marketing remains inside its quarterly budget. Headroom falls to ₹1.2L. Reserved against week 4.",
+    "Approved. ?1.8L is within the ?5.0L ceiling, Sable Design Studio has 6 prior invoices, and Marketing remains inside its quarterly budget. Headroom falls to ?1.2L. Reserved against week 4.",
   createdAt: "2026-09-07T12:40:22+05:30",
 };
 
@@ -469,48 +519,48 @@ const decSales: Decision = {
       rule: "max_autonomous_amount",
       passed: true,
       severity: "hard",
-      detail: "₹2.8L ≤ ₹5.0L delegated ceiling",
+      detail: "?2.8L = ?5.0L delegated ceiling",
     },
     {
       rule: "budget_overage",
       passed: true,
       severity: "hard",
-      detail: "Sales at 69% of ₹15.0L quarterly budget · 88% after",
+      detail: "Sales at 69% of ?15.0L quarterly budget � 88% after",
     },
     {
       rule: "require_vendor_history",
       passed: false,
       severity: "soft",
-      detail: "Vertex Events — no prior invoices · first-time vendor",
+      detail: "Vertex Events � no prior invoices � first-time vendor",
     },
     {
       rule: "anomaly_multiplier",
       passed: true,
       severity: "soft",
-      detail: "₹2.8L vs ₹2.4L events average — 1.2× · flag at 2.5×",
+      detail: "?2.8L vs ?2.4L events average � 1.2� � flag at 2.5�",
     },
     {
       rule: "min_cash_threshold",
       passed: false,
       severity: "soft",
       detail:
-        "Projected minimum is already ₹23.6L; approving takes it to ₹20.8L, ₹4.2L below the ₹25.0L floor",
+        "Projected minimum is already ?23.6L; approving takes it to ?20.8L, ?4.2L below the ?25.0L floor",
     },
     {
       rule: "headroom_check",
       passed: false,
       severity: "soft",
-      detail: "Headroom is −₹1.4L · request needs ₹2.8L",
+      detail: "Headroom is -?1.4L � request needs ?2.8L",
     },
   ],
   dataUsed: [
-    "Q3 department spend — Sales",
+    "Q3 department spend � Sales",
     "Q4 budget allocation",
     "13-week forecast (14:23 IST)",
-    "Vendor history — Vertex Events (none)",
-    "Category average — events (9 samples)",
-    "Acme commitment ₹8.2L, week 4",
-    "Open reservations ledger — ₹5.0L reserved",
+    "Vendor history � Vertex Events (none)",
+    "Category average � events (9 samples)",
+    "Acme commitment ?8.2L, week 4",
+    "Open reservations ledger � ?5.0L reserved",
   ],
   headroomBefore: -1_40_000,
   headroomAfter: -4_20_000,
@@ -518,7 +568,7 @@ const decSales: Decision = {
   projectedMinimumAfter: 20_80_000,
   narration: null,
   fallbackNarration:
-    "Escalated. Nothing is wrong with this request. Two approvals earlier today consumed the ₹6.2L of headroom I started with, and Northwind slipping ₹12.4L to November has already pushed projected minimum to ₹23.6L — ₹1.4L under your ₹25.0L threshold. Approving this would take week 7 to ₹20.8L. Vertex Events is also a first-time vendor, which your rules always route to you.",
+    "Escalated. Nothing is wrong with this request. Two approvals earlier today consumed the ?6.2L of headroom I started with, and Northwind slipping ?12.4L to November has already pushed projected minimum to ?23.6L � ?1.4L under your ?25.0L threshold. Approving this would take week 7 to ?20.8L. Vertex Events is also a first-time vendor, which your rules always route to you.",
   createdAt: "2026-09-07T14:52:18+05:30",
 };
 
@@ -562,18 +612,18 @@ const emails: SentEmail[] = [
     invoiceId: "INV-2041",
     message: {
       to: "finance@acmecorp.in",
-      toName: "Acme Corp — Accounts Payable",
-      subject: "Invoice INV-2041 · ₹9,00,000 · outstanding since 24 July",
+      toName: "Acme Corp � Accounts Payable",
+      subject: "Invoice INV-2041 � ?9,00,000 � outstanding since 24 July",
       body: `Hi Acme Accounts team,
 
-Invoice INV-2041 for ₹9,00,000, issued 10 July and due 24 July, is now 45 days past due.
+Invoice INV-2041 for ?9,00,000, issued 10 July and due 24 July, is now 45 days past due.
 
   Invoice     INV-2041
   Issued      10 Jul 2026
   Due         24 Jul 2026
-  Amount      ₹9,00,000
+  Amount      ?9,00,000
 
-Could you confirm a payment date? If the full amount is difficult this week, a partial settlement with a firm date for the balance is genuinely useful on our side — reply with the amount and the date and I will record it against the invoice.
+Could you confirm a payment date? If the full amount is difficult this week, a partial settlement with a firm date for the balance is genuinely useful on our side � reply with the amount and the date and I will record it against the invoice.
 
 If payment has already been released, please share the UTR and I will reconcile it today.
 
@@ -596,16 +646,16 @@ Sent automatically on behalf of Vertex Labs finance. Reply to this address.`,
     invoiceId: "INV-2044",
     message: {
       to: "accounts@northwindtraders.co.in",
-      toName: "Northwind Traders — Accounts",
-      subject: "Invoice INV-2044 · ₹12,40,000 · 32 days past due",
+      toName: "Northwind Traders � Accounts",
+      subject: "Invoice INV-2044 � ?12,40,000 � 32 days past due",
       body: `Hi Northwind Accounts team,
 
-Invoice INV-2044 for ₹12,40,000, issued 23 July and due 6 August, is now 32 days past due.
+Invoice INV-2044 for ?12,40,000, issued 23 July and due 6 August, is now 32 days past due.
 
   Invoice     INV-2044
   Issued      23 Jul 2026
   Due         06 Aug 2026
-  Amount      ₹12,40,000
+  Amount      ?12,40,000
 
 Our records show your last four invoices settled around 31 days after the due date, so this may already be scheduled. If it is, a confirmation of the release date is all I need.
 
@@ -627,7 +677,7 @@ Sent automatically on behalf of Vertex Labs finance. Reply to this address.`,
 ];
 
 // ---------------------------------------------------------------------------
-// Activity — the centrepiece feed
+// Activity � the centrepiece feed
 // ---------------------------------------------------------------------------
 
 const activity: ActivityEntry[] = [
@@ -636,7 +686,7 @@ const activity: ActivityEntry[] = [
     type: "system",
     actor: "human",
     summary:
-      "Ledger loaded — 6 open invoices, 4 departments, 13-week horizon anchored 07 Sep 2026",
+      "Ledger loaded � 6 open invoices, 4 departments, 13-week horizon anchored 07 Sep 2026",
     createdAt: "2026-09-07T09:02:14+05:30",
   },
   {
@@ -644,7 +694,7 @@ const activity: ActivityEntry[] = [
     type: "forecast_updated",
     actor: "agent",
     summary:
-      "Forecast rebuilt — projected minimum ₹31.2L in week 7, ₹6.2L above threshold, no breach",
+      "Forecast rebuilt � projected minimum ?31.2L in week 7, ?6.2L above threshold, no breach",
     detail: { projectedMinimum: 31_20_000, breachWeek: null },
     createdAt: "2026-09-07T09:05:41+05:30",
   },
@@ -652,7 +702,7 @@ const activity: ActivityEntry[] = [
     id: "ACT-03",
     type: "decision",
     actor: "agent",
-    summary: "Auto-approved ₹3.2L — Engineering — Nimbus Cloud Services",
+    summary: "Auto-approved ?3.2L � Engineering � Nimbus Cloud Services",
     detail: { decisionId: "DEC-1091", requestId: "REQ-4471" },
     createdAt: "2026-09-07T11:14:07+05:30",
   },
@@ -660,7 +710,7 @@ const activity: ActivityEntry[] = [
     id: "ACT-04",
     type: "decision",
     actor: "agent",
-    summary: "Auto-approved ₹1.8L — Marketing — Sable Design Studio",
+    summary: "Auto-approved ?1.8L � Marketing � Sable Design Studio",
     detail: { decisionId: "DEC-1096", requestId: "REQ-4478" },
     createdAt: "2026-09-07T12:40:22+05:30",
   },
@@ -669,7 +719,7 @@ const activity: ActivityEntry[] = [
     type: "shock_applied",
     actor: "human",
     summary:
-      "Northwind ₹12.4L payment slipped to November · Q2 GST remittance ₹4.5L landed in week 6",
+      "Northwind ?12.4L payment slipped to November � Q2 GST remittance ?4.5L landed in week 6",
     detail: { slipped: 12_40_000, added: 4_50_000 },
     createdAt: "2026-09-07T13:05:03+05:30",
   },
@@ -677,7 +727,7 @@ const activity: ActivityEntry[] = [
     id: "ACT-06",
     type: "forecast_updated",
     actor: "agent",
-    summary: "Forecast rebuilt — projected minimum ₹26.2L → ₹18.9L",
+    summary: "Forecast rebuilt � projected minimum ?26.2L ? ?18.9L",
     detail: { before: 26_20_000, after: 18_90_000 },
     createdAt: "2026-09-07T13:05:09+05:30",
   },
@@ -686,7 +736,7 @@ const activity: ActivityEntry[] = [
     type: "breach_detected",
     actor: "agent",
     summary:
-      "Breach detected — week 7 (19 Oct) closes at ₹18.9L, ₹6.1L below the ₹25.0L threshold",
+      "Breach detected � week 7 (19 Oct) closes at ?18.9L, ?6.1L below the ?25.0L threshold",
     detail: { week: 7, gap: 6_10_000 },
     createdAt: "2026-09-07T13:05:11+05:30",
   },
@@ -694,7 +744,7 @@ const activity: ActivityEntry[] = [
     id: "ACT-08",
     type: "email_sent",
     actor: "agent",
-    summary: "Collection email sent — Acme Corp, ₹9.0L, 45 days overdue",
+    summary: "Collection email sent � Acme Corp, ?9.0L, 45 days overdue",
     detail: { emailId: "EM-3301", invoiceId: "INV-2041" },
     createdAt: "2026-09-07T13:07:36+05:30",
   },
@@ -703,7 +753,7 @@ const activity: ActivityEntry[] = [
     type: "email_sent",
     actor: "agent",
     summary:
-      "Collection email sent — Northwind Traders, ₹12.4L, 32 days overdue",
+      "Collection email sent � Northwind Traders, ?12.4L, 32 days overdue",
     detail: { emailId: "EM-3302", invoiceId: "INV-2044" },
     createdAt: "2026-09-07T13:07:38+05:30",
   },
@@ -712,7 +762,7 @@ const activity: ActivityEntry[] = [
     type: "system",
     actor: "agent",
     summary:
-      "Kestrel Media ₹4.8L skipped — account flagged relationship-sensitive, never auto-chased",
+      "Kestrel Media ?4.8L skipped � account flagged relationship-sensitive, never auto-chased",
     detail: { invoiceId: "INV-2055", reason: "sensitive" },
     createdAt: "2026-09-07T13:07:40+05:30",
   },
@@ -720,7 +770,7 @@ const activity: ActivityEntry[] = [
     id: "ACT-11",
     type: "reply_parsed",
     actor: "agent",
-    summary: "Reply parsed — Acme Corp commits ₹8.2L by 30 Sep",
+    summary: "Reply parsed � Acme Corp commits ?8.2L by 30 Sep",
     detail: { invoiceId: "INV-2041", amount: 8_20_000, date: "2026-09-30" },
     createdAt: "2026-09-07T14:22:05+05:30",
   },
@@ -729,7 +779,7 @@ const activity: ActivityEntry[] = [
     type: "commitment_recorded",
     actor: "agent",
     summary:
-      "Commitment recorded — INV-2041, ₹8.2L, lands week 4 · estimate overridden",
+      "Commitment recorded � INV-2041, ?8.2L, lands week 4 � estimate overridden",
     detail: { invoiceId: "INV-2041", week: 4 },
     createdAt: "2026-09-07T14:22:06+05:30",
   },
@@ -738,7 +788,7 @@ const activity: ActivityEntry[] = [
     type: "forecast_updated",
     actor: "agent",
     summary:
-      "Forecast rebuilt — projected minimum ₹18.9L → ₹23.6L, breach narrowed to ₹1.4L",
+      "Forecast rebuilt � projected minimum ?18.9L ? ?23.6L, breach narrowed to ?1.4L",
     detail: { before: 18_90_000, after: 23_60_000 },
     createdAt: "2026-09-07T14:23:11+05:30",
   },
@@ -746,7 +796,7 @@ const activity: ActivityEntry[] = [
     id: "ACT-14",
     type: "decision",
     actor: "agent",
-    summary: "Escalated ₹2.8L — Sales — insufficient headroom",
+    summary: "Escalated ?2.8L � Sales � insufficient headroom",
     detail: { decisionId: "DEC-1103", requestId: "REQ-4486" },
     createdAt: "2026-09-07T14:52:18+05:30",
   },
@@ -777,6 +827,7 @@ const replay: ReplayResult = {
       },
       agentOutcome: "APPROVED",
       agreed: true,
+      failedRules: [],
     },
     {
       request: {
@@ -792,6 +843,7 @@ const replay: ReplayResult = {
       },
       agentOutcome: "ESCALATED",
       agreed: false,
+      failedRules: ["anomaly_multiplier"],
     },
     {
       request: {
@@ -807,6 +859,7 @@ const replay: ReplayResult = {
       },
       agentOutcome: "ESCALATED",
       agreed: false,
+      failedRules: ["anomaly_multiplier"],
     },
     {
       request: {
@@ -822,6 +875,7 @@ const replay: ReplayResult = {
       },
       agentOutcome: "APPROVED",
       agreed: true,
+      failedRules: [],
     },
     {
       request: {
@@ -837,6 +891,7 @@ const replay: ReplayResult = {
       },
       agentOutcome: "ESCALATED",
       agreed: false,
+      failedRules: ["anomaly_multiplier"],
     },
     {
       request: {
@@ -852,6 +907,7 @@ const replay: ReplayResult = {
       },
       agentOutcome: "APPROVED",
       agreed: true,
+      failedRules: [],
     },
   ],
 };
@@ -860,13 +916,21 @@ const replay: ReplayResult = {
 
 export const mockState: DashboardState = {
   company,
+  today: "2026-09-07",
   forecast,
+  lastHealthyForecast: null,
   departments,
+  vendors,
   invoices,
+  payables,
+  reservations,
   activity,
   decisions,
   escalations,
   emails,
   reservedTotal: 5_00_000,
   replay,
+  agent,
+  lastCollectionPlan: null,
+  lastBreachCleared: null,
 };

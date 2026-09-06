@@ -50,36 +50,37 @@
   /* board geometry — one gap, one padding, two fixed row heights.
      Vertical budget, full-screen 1920×1080:
        8 pad + 47 topbar + 12 + 113 stats + 12 + 40 banner + 12
-       + 320 (D) + 12 + 420 (E) = 996, then 12 + 48 for the collapsed Row F.
-     The height steps below trim rows D/E so the board still ends at or
-     above the fold when browser chrome eats into the viewport. */
+       + 64 narrative + 12 + 320 (D) + 12 + 420 (E) = 1072, then Row F
+       below the fold (the content column scrolls). The height steps below
+     trim rows D/E so Row E still ends above the fold when browser chrome
+     eats into the viewport. */
   --gap: 12px;
   --pad: 20px;
   --row-d: 320px;
   --row-e: 420px;
 }
 
-/* 1080p with browser chrome (viewport ≈ 950–1000): 952 above Row F. */
+/* 1080p with browser chrome (viewport ≈ 950–1000): 982 above Row F. */
 @media (max-height: 1000px) {
   :root {
-    --row-d: 300px;
-    --row-e: 400px;
+    --row-d: 280px;
+    --row-e: 370px;
   }
 }
 
-/* 1440×900 full-screen: 892 above Row F. */
+/* 1440×900 full-screen: 889 above Row F (narrative shrinks to 56). */
 @media (max-height: 900px) {
   :root {
-    --row-d: 270px;
-    --row-e: 350px;
+    --row-d: 245px;
+    --row-e: 320px;
   }
 }
 
-/* 1440×900 with chrome, 1280×720 projector: 822 above Row F. */
+/* 1440×900 with chrome, 1280×720 projector: 819 above Row F. */
 @media (max-height: 820px) {
   :root {
-    --row-d: 240px;
-    --row-e: 310px;
+    --row-d: 215px;
+    --row-e: 280px;
   }
 }
 
@@ -143,13 +144,227 @@ button:disabled {
    Shell
    -------------------------------------------------------------------------- */
 
-.app {
-  min-height: 100%;
+:root {
+  --rail-w: 200px;
+}
+
+/* Under 1280px the rail is icon-only. */
+@media (max-width: 1279px) {
+  :root {
+    --rail-w: 56px;
+    --pad: 14px;
+  }
+}
+
+.shell {
+  height: 100%;
+  display: grid;
+  grid-template-columns: var(--rail-w) minmax(0, 1fr);
+}
+
+.shell-main {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 8px var(--pad) var(--pad);
-  max-width: 1880px;
-  margin: 0 auto;
+  padding: 8px var(--pad) 0;
+}
+
+/* Pages scroll inside the content column; the rail and topbar stay put. */
+.shell-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: var(--pad);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+/* --- Rail ------------------------------------------------------------------ */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--line);
+  padding: 10px 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rail-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px;
+  margin-bottom: 10px;
+  font-family: var(--mono);
+  letter-spacing: 0.22em;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.rail-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--agent-soft);
+  border: 1px solid var(--agent-line);
+  color: var(--agent);
+  font-size: 13px;
+  letter-spacing: 0;
+  flex: none;
+}
+
+.rail-word {
+  font-size: 13px;
+}
+
+.rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 10px 0 9px;
+  border-radius: 3px;
+  border-left: 3px solid transparent;
+  color: var(--text-2);
+  text-decoration: none;
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.rail-item:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.rail-item:focus-visible {
+  outline: 1px solid var(--agent);
+  outline-offset: -1px;
+}
+
+.rail-item-active {
+  background: var(--bg-raised);
+  color: var(--text);
+  border-left-color: var(--agent);
+}
+
+.rail-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-3);
+}
+
+.rail-item-active .rail-icon,
+.rail-item:hover .rail-icon {
+  color: var(--agent);
+}
+
+.rail-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rail-badge {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--agent);
+  background: var(--agent-soft);
+  border: 1px solid var(--agent-line);
+  flex: none;
+}
+
+.rail-badge-danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-line);
+}
+
+.rail-dot {
+  color: var(--danger);
+  display: inline-flex;
+  flex: none;
+}
+
+.rail-key {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  padding: 0 5px;
+  line-height: 16px;
+}
+
+.rail-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 10px 6px;
+}
+
+@media (max-width: 1279px) {
+  .rail {
+    padding: 10px 6px;
+  }
+  .rail-word,
+  .rail-label,
+  .rail-key {
+    display: none;
+  }
+  .rail-brand {
+    justify-content: center;
+    padding: 0;
+  }
+  .rail-item {
+    justify-content: center;
+    padding: 0;
+    gap: 0;
+    position: relative;
+  }
+  .rail-badge,
+  .rail-dot {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    min-width: 16px;
+    height: 14px;
+    font-size: 9px;
+    padding: 0 3px;
+  }
 }
 
 /* Row A */
@@ -282,8 +497,40 @@ button:disabled {
 .board > .stats,
 .board > .breach,
 .board > .clear-banner,
+.board > .narrative,
 .cell-replay {
   grid-column: 1 / -1;
+}
+
+/* An escalation is open: the review stack takes the wide slot, Activity
+   narrows to 4, and the ledger pair drops to its own row so nothing in the
+   Approve / Reject row can ever truncate. */
+.board-escalating {
+  /* Activity precedes the review stack in the DOM; dense packing lets the
+     wide review cell fill the same row to its left. */
+  grid-auto-flow: row dense;
+}
+.board-escalating .cell-review {
+  grid-column: 1 / span 8;
+}
+.board-escalating .cell-activity {
+  grid-column: 9 / span 4;
+}
+.board-escalating .cell-ledger {
+  grid-column: 1 / -1;
+  height: auto;
+  flex-direction: row;
+}
+.board-escalating .cell-ledger > .panel {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 260px;
+}
+.board-escalating .cell-ledger > .panel-auto {
+  max-height: none;
+}
+.board-escalating .esc-actions {
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
 }
 
 .cell {
@@ -356,6 +603,12 @@ button:disabled {
   }
   .cell-review {
     grid-column: 7 / span 6;
+  }
+  .board-escalating .cell-review {
+    grid-column: 1 / span 8;
+  }
+  .board-escalating .cell-activity {
+    grid-column: 9 / span 4;
   }
   .cell-ledger {
     grid-column: 1 / -1;
@@ -693,6 +946,30 @@ button:disabled {
   text-overflow: ellipsis;
 }
 
+/* The recovery sentence is longer and is the point: let it wrap. */
+.clear-banner-recovered {
+  height: auto;
+  min-height: 40px;
+  padding: 8px 14px;
+  white-space: normal;
+  line-height: 1.45;
+}
+
+.clear-banner-recovered > span {
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.clear-banner-recovered b {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.clear-banner-recovered .mono {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* --------------------------------------------------------------------------
    Full-width alert bars — staleness, dev fixture.
    Styled to read like the breach banner from across a room.
@@ -950,7 +1227,8 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   font-family: var(--mono);
   font-size: 11.5px;
   color: var(--text-3);
@@ -965,10 +1243,11 @@ button:disabled {
   white-space: nowrap;
 }
 
+/* Wraps rather than clipping "… short · no authority" at 1280. */
 .headroom-figs {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: right;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
 }
 
 .hbar {
@@ -1041,10 +1320,15 @@ button:disabled {
   from {
     opacity: 0;
     transform: translateY(-7px);
+    box-shadow: inset 0 0 0 40px rgba(109, 127, 242, 0.22);
+  }
+  60% {
+    box-shadow: inset 0 0 0 40px rgba(109, 127, 242, 0.1);
   }
   to {
     opacity: 1;
     transform: none;
+    box-shadow: none;
   }
 }
 
@@ -1244,13 +1528,38 @@ button.tbl-row:focus-visible {
   white-space: nowrap;
 }
 
+/* Explicit widths: time, department, amount, outcome, reason. The amount
+   column is sized for "₹12.4L" so the header can never sit on top of it. */
 .dec-row {
-  grid-template-columns: 58px minmax(0, 0.8fr) 56px 80px minmax(0, 1.6fr);
+  grid-template-columns: 62px minmax(84px, 1fr) 68px 92px minmax(0, 1.4fr);
   font-size: 12px;
+}
+
+@media (max-width: 1500px) {
+  .dec-row {
+    grid-template-columns: 62px minmax(84px, 1fr) 68px 92px;
+  }
+  .dec-row > :nth-child(5) {
+    display: none;
+  }
 }
 
 .inv-row {
   grid-template-columns: minmax(0, 1.3fr) auto auto 62px;
+}
+
+/* Customer names wrap onto a second line rather than clipping. */
+.inv-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+/* Chased or committed: the rows the story is about. */
+.inv-row-hero {
+  border-left: 3px solid var(--agent);
+  background-image: linear-gradient(90deg, var(--agent-soft) 0%, rgba(109, 127, 242, 0) 40%);
+  padding-left: 11px;
 }
 
 .inv-due {
@@ -2181,20 +2490,6 @@ button.tbl-row:focus-visible {
   color: var(--danger);
 }
 
-.demo-hint {
-  position: fixed;
-  right: 16px;
-  bottom: 14px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #2b3542;
-  z-index: 40;
-  pointer-events: none;
-  user-select: none;
-}
-
 /* --------------------------------------------------------------------------
    Boot / error states
    -------------------------------------------------------------------------- */
@@ -2265,6 +2560,734 @@ button.tbl-row:focus-visible {
   color: var(--text-3);
 }
 
+/* --------------------------------------------------------------------------
+   Visual tiers — hero / primary / reference
+   -------------------------------------------------------------------------- */
+
+/* Reference panels: muted heading, no header badges or outcome chips. The
+   count note stays so nothing loses information, only emphasis. */
+.panel-reference .panel-title {
+  color: var(--text-3);
+  font-weight: 500;
+}
+.panel-reference .panel-head .badge,
+.panel-reference .panel-head .outcome,
+.panel-reference .panel-head .chip-row {
+  display: none;
+}
+
+.panel-primary .panel-title {
+  color: var(--text);
+}
+
+.panel-hero {
+  border-color: var(--agent-line);
+}
+
+/* The panel the agent last wrote to: agent-blue border for three seconds. */
+.cell-pulse > .panel,
+.cell-pulse.stack > .panel {
+  animation: panelPulse 3s ease-out both;
+}
+
+@keyframes panelPulse {
+  0% {
+    border-color: var(--agent);
+    box-shadow: 0 0 0 1px var(--agent-line), 0 0 22px rgba(109, 127, 242, 0.35);
+  }
+  60% {
+    border-color: var(--agent-line);
+    box-shadow: 0 0 0 1px rgba(109, 127, 242, 0.2), 0 0 10px rgba(109, 127, 242, 0.15);
+  }
+  100% {
+    border-color: var(--line);
+    box-shadow: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Narrative strip — hero tier
+   -------------------------------------------------------------------------- */
+
+.narrative {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 16px 12px;
+  border: 1px solid var(--agent-line);
+  border-left: 4px solid var(--agent);
+  background: linear-gradient(90deg, var(--agent-soft) 0%, var(--bg-panel) 55%);
+  border-radius: var(--radius);
+  min-height: 64px;
+}
+
+.narrative-flash {
+  animation: narrativeFlash 3s ease-out both;
+}
+
+@keyframes narrativeFlash {
+  0% {
+    box-shadow: 0 0 0 1px var(--agent), 0 0 26px rgba(109, 127, 242, 0.4);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+.narrative-empty {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.narrative-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.narrative-time {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.narrative-meta {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.narrative-spacer {
+  flex: 1;
+}
+
+.narrative-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+.narrative-count {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.narrative-text {
+  margin: 0;
+  font-size: 16.5px;
+  line-height: 1.5;
+  color: var(--text);
+  text-align: left;
+  padding: 0;
+  overflow-wrap: anywhere;
+}
+
+.narrative-text-btn {
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.narrative-text-btn:hover {
+  color: #ffffff;
+}
+
+.narrative-text-btn:focus-visible {
+  outline: 1px solid var(--agent);
+  outline-offset: 3px;
+}
+
+.narrative-muted {
+  color: var(--text-3);
+  font-size: 13.5px;
+}
+
+@media (max-height: 900px) {
+  .narrative-text {
+    font-size: 15px;
+  }
+  .narrative {
+    min-height: 56px;
+    padding: 9px 14px 10px;
+  }
+}
+
+/* Inline text button — used by nav arrows, "back to ledger", drawer close. */
+.link-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--agent);
+  padding: 2px 4px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.link-btn:hover:not(:disabled) {
+  background: var(--agent-soft);
+}
+
+.link-btn:disabled {
+  color: var(--text-3);
+  opacity: 0.5;
+}
+
+.link-btn:focus-visible {
+  outline: 1px solid var(--agent);
+}
+
+/* CFO override marker — always text, colour reinforces. */
+.chip-override {
+  color: var(--warn);
+  border-color: var(--warn-line);
+  background: var(--warn-soft);
+  font-weight: 700;
+}
+
+.override-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--warn-line);
+  border-left: 3px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: 3px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.override-box .audit-section-title {
+  color: var(--warn);
+  margin-bottom: 4px;
+}
+
+.override-link {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 6px;
+}
+
+.swatch-dash {
+  background: repeating-linear-gradient(90deg, currentColor 0 3px, transparent 3px 5px);
+}
+
+/* --------------------------------------------------------------------------
+   Cash page
+   -------------------------------------------------------------------------- */
+
+.cash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 8fr) minmax(320px, 4fr);
+  gap: var(--gap);
+  align-items: start;
+}
+
+.cash-main,
+.cash-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+@media (max-width: 1279px) {
+  .cash-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Week table: 9 or 10 columns, monospace figures, sticky header. */
+.wk-row {
+  grid-template-columns: 44px 118px repeat(7, minmax(0, 1fr));
+  font-size: 12px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+.wk-row-hyp {
+  grid-template-columns: 44px 118px repeat(8, minmax(0, 1fr));
+}
+
+.wk-week {
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.wk-dates {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.wk-in {
+  color: var(--ok);
+}
+
+.wk-close {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.wk-hyp {
+  color: var(--agent);
+  font-weight: 600;
+}
+
+.wk-close-below {
+  color: var(--danger);
+}
+
+/* Below-floor rows: tint plus a text marker, never colour alone. */
+.wk-row-below {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(217, 73, 79, 0.07) 0px,
+    rgba(217, 73, 79, 0.07) 6px,
+    rgba(217, 73, 79, 0.015) 6px,
+    rgba(217, 73, 79, 0.015) 12px
+  );
+}
+
+.wk-row-selected {
+  background-color: var(--bg-raised);
+  box-shadow: inset 3px 0 0 var(--agent);
+}
+
+.wk-flag {
+  display: inline-block;
+  margin-left: 6px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--danger);
+  vertical-align: 1px;
+}
+
+@media (max-width: 1500px) {
+  .wk-row {
+    grid-template-columns: 40px 104px repeat(7, minmax(0, 1fr));
+  }
+  .wk-row-hyp {
+    grid-template-columns: 40px 104px repeat(8, minmax(0, 1fr));
+  }
+  .wk-dates {
+    font-size: 10px;
+  }
+}
+
+/* Why week N — ranked contributors. */
+.why-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.why-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.why-row:last-child {
+  border-bottom: none;
+}
+
+.why-rank {
+  font-size: 12px;
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.why-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.why-label {
+  font-size: 13px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.why-detail {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  overflow-wrap: anywhere;
+}
+
+.why-amount {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.why-foot {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+
+.panel-breach {
+  border-color: var(--danger-line);
+}
+
+/* What-if form. */
+.whatif-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 10px;
+}
+
+.whatif-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.whatif-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--bg-inset);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.input:focus {
+  outline: 1px solid var(--agent);
+  border-color: var(--agent);
+}
+
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.verdict {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--line-strong);
+  border-left-width: 3px;
+  border-radius: 3px;
+  background: var(--bg-inset);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.verdict-idle {
+  color: var(--text-3);
+}
+
+.verdict-ok {
+  border-color: var(--ok-line);
+  border-left-color: var(--ok);
+}
+.verdict-ok .verdict-title {
+  color: var(--ok);
+}
+
+.verdict-danger {
+  border-color: var(--danger-line);
+  border-left-color: var(--danger);
+}
+.verdict-danger .verdict-title {
+  color: var(--danger);
+}
+
+.verdict-warn {
+  border-color: var(--warn-line);
+  border-left-color: var(--warn);
+}
+.verdict-warn .verdict-title {
+  color: var(--warn);
+}
+
+.verdict-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.verdict-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 14px;
+  font-size: 12px;
+}
+
+.verdict-grid > :nth-child(odd) {
+  color: var(--text-3);
+}
+
+.verdict-grid b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.scenario-list {
+  margin-top: 12px;
+}
+
+.scenario {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.scenario:last-of-type {
+  border-bottom: none;
+}
+
+.scenario-off {
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+.scenario input {
+  accent-color: var(--agent);
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.scenario-detail {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+/* Week drawer. */
+.drawer {
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.drawer-summary b {
+  color: var(--text);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.drawer-section {
+  padding: 8px 14px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.drawer-section:last-child {
+  border-bottom: none;
+}
+
+.drawer-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+
+.drawer-title .mono {
+  color: var(--text-2);
+}
+
+.drawer-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "label amount"
+    "detail amount";
+  gap: 0 12px;
+  padding: 4px 0;
+  border-top: 1px solid rgba(28, 36, 47, 0.6);
+}
+
+.drawer-label {
+  grid-area: label;
+  font-size: 12.5px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.drawer-detail {
+  grid-area: detail;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  overflow-wrap: anywhere;
+}
+
+.drawer-amount {
+  grid-area: amount;
+  align-self: center;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.drawer-empty {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-3);
+  padding: 4px 0;
+}
+
+/* --------------------------------------------------------------------------
+   Audit page
+   -------------------------------------------------------------------------- */
+
+.stats-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.stat-value-sm {
+  font-size: 26px;
+}
+
+.audit-page-record {
+  max-width: 980px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.filter-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-right: 3px;
+}
+
+.filter-chip {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  color: var(--text-2);
+  background: var(--bg-raised);
+  white-space: nowrap;
+}
+
+.filter-chip:hover {
+  border-color: var(--agent-line);
+  color: var(--text);
+}
+
+.filter-chip-on {
+  color: var(--agent);
+  border-color: var(--agent-line);
+  background: var(--agent-soft);
+}
+
+.ledger-row {
+  grid-template-columns: 28px 62px 64px minmax(90px, 0.9fr) minmax(90px, 1fr) 68px 92px minmax(0, 1.6fr) 130px;
+  font-size: 12px;
+}
+
+.ledger-row-override {
+  border-left: 3px solid var(--warn);
+  padding-left: 11px;
+}
+
+.ledger-note {
+  color: var(--text-3);
+  font-style: normal;
+}
+
+.res-row {
+  grid-template-columns: 62px minmax(0, 2fr) 76px 44px 88px 90px;
+  font-size: 12px;
+}
+
+.res-held {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--agent);
+}
+
+@media (max-width: 1400px) {
+  .ledger-row {
+    grid-template-columns: 28px 62px 64px minmax(80px, 0.9fr) 68px 92px minmax(0, 1.4fr) 120px;
+  }
+  .ledger-row > :nth-child(5) {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .stats-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -2273,4 +3296,225 @@ button.tbl-row:focus-visible {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ===========================================================================
+   Shared controls for the operator pages
+   Form fields, tabs, clickable table rows, page grids. Added so every page
+   uses one visual language instead of inline approximations.
+   =========================================================================== */
+
+.field,
+input.field,
+select.field,
+textarea.field,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-inset);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  padding: 7px 10px;
+  min-height: 34px;
+  width: 100%;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+input[type="number"],
+input[inputmode="numeric"],
+input[inputmode="decimal"] {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--agent);
+  box-shadow: 0 0 0 3px var(--agent-soft);
+}
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+textarea {
+  resize: vertical;
+  min-height: 64px;
+  line-height: 1.45;
+}
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-3) 50%),
+    linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 55%, calc(100% - 10px) 55%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+}
+.field-label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 5px;
+}
+.field-row {
+  display: grid;
+  gap: 10px;
+}
+.field-row-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.field-hint {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+.field-error {
+  font-size: 12.5px;
+  color: var(--danger);
+  margin-top: 6px;
+}
+
+/* --- Tabs ---------------------------------------------------------------- */
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+  overflow-x: auto;
+}
+.tab {
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 8px 12px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tab-active,
+.tab[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--agent);
+}
+.tab-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  margin-left: 6px;
+  color: var(--text-3);
+}
+
+/* --- Tables -------------------------------------------------------------- */
+.tbl-row-clickable {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+.tbl-row-clickable:hover {
+  background-color: var(--bg-hover);
+}
+.tbl-row-clickable:focus-visible {
+  outline: 2px solid var(--agent);
+  outline-offset: -2px;
+}
+.tbl-sort {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.tbl-sort:hover {
+  color: var(--text);
+}
+
+/* --- Page grids ---------------------------------------------------------- */
+.page {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+.page-cols-7-5,
+.page-cols-8-4,
+.page-cols-5-7 {
+  display: grid;
+  gap: 12px;
+  align-items: start;
+}
+.page-cols-7-5 {
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+}
+.page-cols-8-4 {
+  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+}
+.page-cols-5-7 {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+@media (max-width: 1400px) {
+  .page-cols-7-5,
+  .page-cols-8-4,
+  .page-cols-5-7 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* --- Toggle switch ------------------------------------------------------- */
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--line-strong);
+  border: 0;
+  cursor: pointer;
+  transition: background 160ms ease;
+  flex: none;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform 160ms ease;
+}
+.switch[aria-checked="true"] {
+  background: var(--ok);
+}
+.switch[aria-checked="true"]::after {
+  transform: translateX(20px);
+}
+.switch:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+/* --- Inset / drawer ------------------------------------------------------ */
+.inset {
+  background: var(--bg-inset);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--agent);
+  border-radius: 4px;
+  padding: 12px 14px;
 }
