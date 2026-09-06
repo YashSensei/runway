@@ -15,6 +15,7 @@ import type { TooltipProps } from "recharts";
 import type { Forecast, ForecastWeek, Rupees } from "@shared/types";
 import { lakh, lakhSigned, rupees, shortDate, toLakhs, weekLabel } from "../format";
 import { domainSamples, forecastsDiffer } from "../lib/forecastMath";
+import { CHART } from "../lib/chartTheme";
 import { Empty, Panel } from "./Panel";
 import type { PanelTier } from "./Panel";
 
@@ -37,14 +38,16 @@ interface DotRenderProps {
   key?: string | number;
 }
 
-const OK = "#38b48b";
-const DANGER = "#d9494f";
-const GHOST = "#8794a6";
-const HYP = "#6d7ff2";
-const AXIS = "#8794a6";
-const GRID = "#161d27";
-const PANEL_BG = "#0e131a";
-const MONO = "ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace";
+const {
+  ok: OK,
+  danger: DANGER,
+  ghost: GHOST,
+  hyp: HYP,
+  axis: AXIS,
+  grid: GRID,
+  surface: PANEL_BG,
+} = CHART;
+const TICK_FONT_SIZE = 12;
 
 /**
  * The plot rectangle is pinned rather than measured so the gradients can use
@@ -248,8 +251,8 @@ export function ForecastChart({
                 height={X_AXIS_HEIGHT}
                 ticks={rows.map((r) => r.week)}
                 tickFormatter={(v: number) => `W${v}`}
-                tick={{ fill: AXIS, fontSize: 11.5, fontFamily: MONO }}
-                axisLine={{ stroke: "#222c38" }}
+                tick={{ fill: AXIS, fontSize: TICK_FONT_SIZE }}
+                axisLine={{ stroke: GRID }}
                 tickLine={false}
                 tickMargin={7}
               />
@@ -258,7 +261,7 @@ export function ForecastChart({
                 ticks={scale.ticks}
                 width={50}
                 tickFormatter={(v: number) => `${v}L`}
-                tick={{ fill: AXIS, fontSize: 11.5, fontFamily: MONO }}
+                tick={{ fill: AXIS, fontSize: TICK_FONT_SIZE }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -266,15 +269,14 @@ export function ForecastChart({
               {showZeroLine ? (
                 <ReferenceLine
                   y={0}
-                  stroke="#5c6a7c"
+                  stroke={CHART.zero}
                   strokeWidth={1.4}
                   ifOverflow="hidden"
                   label={{
                     value: "ZERO",
                     position: "insideBottomLeft",
-                    fill: "#8794a6",
+                    fill: AXIS,
                     fontSize: 11,
-                    fontFamily: MONO,
                     letterSpacing: 1.2,
                     dy: -4,
                   }}
@@ -292,7 +294,7 @@ export function ForecastChart({
 
               <Tooltip
                 content={<ForecastTooltip />}
-                cursor={{ stroke: "#39465a", strokeWidth: 1 }}
+                cursor={{ stroke: CHART.cursor, strokeWidth: 1 }}
               />
 
               {/* Ghost under the live line: the pre-shock baseline. */}
@@ -326,7 +328,7 @@ export function ForecastChart({
                 strokeWidth={2.4}
                 fill="url(#rw-fill)"
                 dot={renderDot}
-                activeDot={{ r: 5, strokeWidth: 2, stroke: "#0a0d12" }}
+                activeDot={{ r: 5, strokeWidth: 2, stroke: PANEL_BG }}
                 isAnimationActive
                 animationDuration={620}
                 animationEasing="ease-out"
@@ -343,7 +345,7 @@ export function ForecastChart({
                   fill="none"
                   fillOpacity={0}
                   dot={false}
-                  activeDot={{ r: 4, strokeWidth: 1.5, stroke: "#0a0d12", fill: HYP }}
+                  activeDot={{ r: 4, strokeWidth: 1.5, stroke: PANEL_BG, fill: HYP }}
                   connectNulls
                   isAnimationActive
                   animationDuration={420}
@@ -459,7 +461,6 @@ function ThresholdLabel({ text, viewBox }: { text: string; viewBox?: LabelViewBo
         dominantBaseline="central"
         fill={DANGER}
         fontSize={fontSize}
-        fontFamily={MONO}
         fontWeight={600}
         letterSpacing={1}
       >
@@ -501,8 +502,8 @@ function renderDot(props: DotRenderProps) {
       cx={cx}
       cy={cy}
       r={below ? 4 : 2.6}
-      fill={below ? DANGER : "#0a0d12"}
-      stroke={below ? "#0a0d12" : OK}
+      fill={below ? DANGER : PANEL_BG}
+      stroke={below ? PANEL_BG : OK}
       strokeWidth={below ? 1.5 : 1.6}
     />
   );

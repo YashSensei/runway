@@ -86,7 +86,7 @@ function AutonomySwitch({ state }: PageProps) {
       right={
         shown ? (
           <span className="badge badge-agent">
-            <i className="dot dot-pulse" />
+            <i className="dot" />
             acting
           </span>
         ) : (

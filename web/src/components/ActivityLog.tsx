@@ -40,7 +40,7 @@ export function ActivityLog({
       right={
         <>
           <span className="badge badge-agent">
-            <i className="dot dot-pulse" />
+            <i className="dot" />
             {agentCount} autonomous
           </span>
           <span className="panel-note">

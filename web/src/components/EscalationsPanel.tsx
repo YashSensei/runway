@@ -54,7 +54,7 @@ export function EscalationsPanel({ state, onAskWhy, className }: Props) {
       right={
         escalations.length > 0 ? (
           <span className="badge badge-danger">
-            <i className="dot dot-pulse" />
+            <i className="dot" />
             {escalations.length} awaiting you
           </span>
         ) : (

@@ -90,7 +90,7 @@ function EscalationWorkspace({
       bodyClassName="panel-body-esc"
       right={
         <span className="badge badge-danger">
-          <i className="dot dot-pulse" />
+          <i className="dot" />
           {escalations.length} awaiting you
         </span>
       }
