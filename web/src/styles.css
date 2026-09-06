@@ -56,24 +56,6 @@
        eats into the viewport. */
   --row-d: 320px;
   --row-e: 420px;
-
-  /* ---- legacy aliases: every old token resolves to the new palette so the
-     stylesheet retints in one edit. Deleted once no rule references them. */
-  --bg-panel: var(--surface);
-  --bg-raised: var(--surface-2);
-  --bg-hover: var(--surface-2);
-  --bg-inset: var(--surface-2);
-  --line: var(--border);
-  --line-strong: var(--border);
-  --agent: var(--accent);
-  --agent-soft: var(--accent-soft);
-  --agent-line: var(--border);
-  --ok-line: var(--border);
-  --warn-line: var(--border);
-  --danger-line: var(--border);
-  --ok-dim: var(--ok);
-  --sans: var(--font);
-  --mono: var(--font-mono);
 }
 
 /* 1080p with browser chrome (viewport ≈ 950–1000): 982 above Row F. */
@@ -171,10 +153,6 @@ button:disabled {
    Shell
    -------------------------------------------------------------------------- */
 
-:root {
-  --rail-w: 200px;
-}
-
 /* Under 1280px the rail is icon-only. */
 @media (max-width: 1279px) {
   :root {
@@ -206,14 +184,13 @@ button:disabled {
   padding-bottom: var(--pad);
 }
 
-
 /* --- Rail ------------------------------------------------------------------ */
 
 .rail {
   display: flex;
   flex-direction: column;
-  background: var(--bg-panel);
-  border-right: 1px solid var(--line);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
   padding: 10px 8px;
   min-height: 0;
   overflow: hidden;
@@ -237,9 +214,9 @@ button:disabled {
   width: 24px;
   height: 24px;
   border-radius: var(--radius-sm);
-  background: var(--agent-soft);
-  border: 1px solid var(--agent-line);
-  color: var(--agent);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  color: var(--accent);
   font-size: var(--fs-2);
   letter-spacing: 0;
   flex: none;
@@ -276,19 +253,19 @@ button:disabled {
 }
 
 .rail-item:hover {
-  background: var(--bg-hover);
+  background: var(--surface-2);
   color: var(--text);
 }
 
 .rail-item:focus-visible {
-  outline: 1px solid var(--agent);
+  outline: 1px solid var(--accent);
   outline-offset: -1px;
 }
 
 .rail-item-active {
-  background: var(--bg-raised);
+  background: var(--surface-2);
   color: var(--text);
-  border-left-color: var(--agent);
+  border-left-color: var(--accent);
 }
 
 .rail-icon {
@@ -299,7 +276,7 @@ button:disabled {
 
 .rail-item-active .rail-icon,
 .rail-item:hover .rail-icon {
-  color: var(--agent);
+  color: var(--accent);
 }
 
 .rail-label {
@@ -319,16 +296,16 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--agent);
-  background: var(--agent-soft);
-  border: 1px solid var(--agent-line);
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
   flex: none;
 }
 
 .rail-badge-danger {
   color: var(--danger);
   background: var(--danger-soft);
-  border-color: var(--danger-line);
+  border-color: var(--border);
 }
 
 .rail-dot {
@@ -340,7 +317,7 @@ button:disabled {
 .rail-key {
   font-size: var(--fs-1);
   color: var(--text-3);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0 5px;
   line-height: 16px;
@@ -348,7 +325,7 @@ button:disabled {
 
 .rail-divider {
   height: 1px;
-  background: var(--line);
+  background: var(--border);
   margin: 10px 6px;
 }
 
@@ -357,8 +334,8 @@ button:disabled {
     padding: 10px 6px;
   }
   .rail-word,
-  .rail-label,
-  .rail-key {
+.rail-label,
+.rail-key {
     display: none;
   }
   .rail-brand {
@@ -372,7 +349,7 @@ button:disabled {
     position: relative;
   }
   .rail-badge,
-  .rail-dot {
+.rail-dot {
     position: absolute;
     top: 3px;
     right: 3px;
@@ -389,26 +366,9 @@ button:disabled {
   align-items: center;
   gap: 16px;
   padding: 10px 2px 11px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   margin-bottom: var(--gap);
   flex: none;
-}
-
-.brand {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.brand-mark {
-  font-size: var(--fs-4);
-  font-weight: 700;
-  color: var(--text);
-}
-
-.brand-sub {
-  font-size: var(--fs-1);
-  color: var(--text-3);
 }
 
 .topbar-spacer {
@@ -426,45 +386,6 @@ button:disabled {
 .topbar-meta strong {
   color: var(--text-2);
   font-weight: 500;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--fs-1);
-  padding: 3px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
-  color: var(--text-2);
-  white-space: nowrap;
-  line-height: 1.3;
-}
-
-.badge-live {
-  color: var(--ok);
-  border-color: var(--ok-line);
-  background: var(--ok-soft);
-}
-.badge-mock {
-  color: var(--warn);
-  border-color: var(--warn-line);
-  background: var(--warn-soft);
-}
-.badge-agent {
-  color: var(--agent);
-  border-color: var(--agent-line);
-  background: var(--agent-soft);
-}
-.badge-danger {
-  color: var(--danger);
-  border-color: var(--danger-line);
-  background: var(--danger-soft);
-}
-.badge-ok {
-  color: var(--ok);
-  border-color: var(--ok-line);
-  background: var(--ok-soft);
 }
 
 .dot {
@@ -637,9 +558,9 @@ button:disabled {
 
 @media (max-width: 1000px) {
   .cell-chart,
-  .cell-authority,
-  .cell-activity,
-  .cell-review {
+.cell-authority,
+.cell-activity,
+.cell-review {
     grid-column: 1 / -1;
   }
   .cell-authority {
@@ -661,8 +582,8 @@ button:disabled {
    -------------------------------------------------------------------------- */
 
 .panel {
-  background: var(--bg-panel);
-  border: 1px solid var(--line);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
@@ -675,7 +596,7 @@ button:disabled {
   align-items: center;
   gap: 12px;
   padding: 9px 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   flex: none;
   min-height: 41px;
 }
@@ -759,11 +680,11 @@ button:disabled {
   font-size: var(--fs-1);
   line-height: 1;
   padding: 2px 5px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border);
   border-bottom-width: 2px;
   border-radius: var(--radius-sm);
   color: var(--text-2);
-  background: var(--bg-raised);
+  background: var(--surface-2);
 }
 
 /* --------------------------------------------------------------------------
@@ -774,14 +695,14 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
+  background: var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
 }
 
 .stat {
-  background: var(--bg-panel);
+  background: var(--surface);
   padding: 9px 16px 9px;
   display: flex;
   flex-direction: column;
@@ -810,7 +731,7 @@ button:disabled {
   background: var(--danger);
 }
 .stat-neutral::before {
-  background: var(--line-strong);
+  background: var(--border);
 }
 
 .stat-label {
@@ -904,7 +825,7 @@ button:disabled {
 .breach-rule {
   width: 1px;
   align-self: stretch;
-  background: var(--danger-line);
+  background: var(--border);
 }
 
 /* Slim 40px strip when nothing is wrong. */
@@ -914,7 +835,7 @@ button:disabled {
   gap: 12px;
   height: 40px;
   padding: 0 14px;
-  border: 1px solid var(--ok-line);
+  border: 1px solid var(--border);
   background: var(--ok-soft);
   border-radius: var(--radius);
   color: var(--ok);
@@ -1001,7 +922,7 @@ button:disabled {
   gap: 10px;
   padding: 7px 10px;
   margin-bottom: 10px;
-  border: 1px solid var(--danger-line);
+  border: 1px solid var(--border);
   background: var(--danger-soft);
   border-radius: var(--radius-sm);
   font-size: var(--fs-2);
@@ -1074,7 +995,7 @@ button:disabled {
   justify-content: space-between;
   align-items: baseline;
   gap: 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 6px;
   margin-bottom: 7px;
 }
@@ -1111,7 +1032,7 @@ button:disabled {
 }
 
 .tip-total {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--border);
   margin-top: 6px;
   padding-top: 6px;
   font-size: var(--fs-2);
@@ -1198,15 +1119,15 @@ button:disabled {
 .hbar {
   height: 10px;
   margin-top: 6px;
-  background: var(--bg-inset);
-  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .hbar-fill {
   height: 100%;
-  background: var(--agent);
+  background: var(--accent);
   transition: width 500ms ease;
 }
 
@@ -1220,8 +1141,8 @@ button:disabled {
 .principle {
   margin: 10px 0 0;
   padding: 7px 10px;
-  border-left: 2px solid var(--agent);
-  background: var(--bg-inset);
+  border-left: 2px solid var(--accent);
+  background: var(--surface-2);
   font-size: var(--fs-2);
   line-height: 1.45;
   color: var(--text);
@@ -1244,7 +1165,7 @@ button:disabled {
   width: 100%;
   text-align: left;
   padding: 7px 12px 7px 10px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   border-left: 4px solid transparent;
   background: transparent;
   animation: rowIn 340ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
@@ -1266,10 +1187,10 @@ button:disabled {
 }
 
 .log-row-agent {
-  border-left-color: var(--agent);
+  border-left-color: var(--accent);
   background-image: linear-gradient(
     90deg,
-    var(--agent-soft) 0%,
+    var(--accent-soft) 0%,
     rgba(109, 127, 242, 0) 42%
   );
 }
@@ -1279,16 +1200,16 @@ button:disabled {
 }
 
 .log-row-clickable:hover {
-  background-color: var(--bg-hover);
+  background-color: var(--surface-2);
 }
 
 .log-row-agent.log-row-clickable:hover {
-  background-color: var(--bg-hover);
+  background-color: var(--surface-2);
   border-left-color: var(--accent);
 }
 
 .log-row-clickable:focus-visible {
-  outline: 1px solid var(--agent);
+  outline: 1px solid var(--accent);
   outline-offset: -1px;
 }
 
@@ -1300,40 +1221,6 @@ button:disabled {
 
 /* Icon + text in one chip. Text is always present, so the colour is a hint,
    not the message. */
-.log-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 20px;
-  padding: 0 7px 0 5px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
-  color: var(--text-2);
-  font-size: var(--fs-1);
-  white-space: nowrap;
-  flex: none;
-}
-
-.log-chip-agent {
-  color: var(--agent);
-  border-color: var(--agent-line);
-  background: var(--agent-soft);
-}
-.log-chip-danger {
-  color: var(--danger);
-  border-color: var(--danger-line);
-  background: var(--danger-soft);
-}
-.log-chip-ok {
-  color: var(--ok);
-  border-color: var(--ok-line);
-  background: var(--ok-soft);
-}
-.log-chip-warn {
-  color: var(--warn);
-  border-color: var(--warn-line);
-  background: var(--warn-soft);
-}
 
 .log-summary {
   font-size: var(--fs-2);
@@ -1351,26 +1238,6 @@ button:disabled {
 
 /* Agent vs human is the product's core claim. It has to be unmistakable from
    the back of the room, so these are body-text sized, not fine print. */
-.tag-agent {
-  font-size: var(--fs-1);
-  font-weight: 700;
-  color: var(--agent);
-  border: 1px solid var(--agent-line);
-  background: var(--agent-soft);
-  border-radius: var(--radius-sm);
-  padding: 1px 6px;
-  white-space: nowrap;
-}
-
-.tag-human {
-  font-size: var(--fs-1);
-  font-weight: 600;
-  color: var(--text-2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  padding: 1px 6px;
-  white-space: nowrap;
-}
 
 .log-open {
   font-size: var(--fs-1);
@@ -1379,7 +1246,7 @@ button:disabled {
 }
 
 .log-row-clickable:hover .log-open {
-  color: var(--agent);
+  color: var(--accent);
 }
 
 /* --------------------------------------------------------------------------
@@ -1397,7 +1264,7 @@ button:disabled {
   gap: 10px;
   width: 100%;
   padding: 6px 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   font-size: var(--fs-2);
   text-align: left;
   color: var(--text);
@@ -1407,7 +1274,7 @@ button:disabled {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--bg-panel);
+  background: var(--surface);
   font-size: var(--fs-1);
   color: var(--text-3);
   padding-top: 5px;
@@ -1423,11 +1290,11 @@ button.tbl-row {
 }
 
 button.tbl-row:hover {
-  background: var(--bg-hover);
+  background: var(--surface-2);
 }
 
 button.tbl-row:focus-visible {
-  outline: 1px solid var(--agent);
+  outline: 1px solid var(--accent);
   outline-offset: -1px;
 }
 
@@ -1479,8 +1346,8 @@ button.tbl-row:focus-visible {
 
 /* Chased or committed: the rows the story is about. */
 .inv-row-hero {
-  border-left: 3px solid var(--agent);
-  background-image: linear-gradient(90deg, var(--agent-soft) 0%, rgba(109, 127, 242, 0) 40%);
+  border-left: 3px solid var(--accent);
+  background-image: linear-gradient(90deg, var(--accent-soft) 0%, rgba(109, 127, 242, 0) 40%);
   padding-left: 11px;
 }
 
@@ -1502,7 +1369,7 @@ button.tbl-row:focus-visible {
   text-transform: lowercase;
   padding: 1px 6px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border);
   color: var(--text-2);
   white-space: nowrap;
   line-height: 1.5;
@@ -1510,17 +1377,17 @@ button.tbl-row:focus-visible {
 
 .outcome-APPROVED {
   color: var(--ok);
-  border-color: var(--ok-line);
+  border-color: var(--border);
   background: var(--ok-soft);
 }
 .outcome-ESCALATED {
   color: var(--warn);
-  border-color: var(--warn-line);
+  border-color: var(--border);
   background: var(--warn-soft);
 }
 .outcome-REJECTED {
   color: var(--danger);
-  border-color: var(--danger-line);
+  border-color: var(--border);
   background: var(--danger-soft);
 }
 
@@ -1529,8 +1396,8 @@ button.tbl-row:focus-visible {
    -------------------------------------------------------------------------- */
 
 .esc {
-  border: 1px solid var(--danger-line);
-  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  background: var(--surface);
   border-radius: var(--radius);
   /* No overflow:hidden here: the action row is sticky against the panel
      scroller, which needs an unbroken chain of visible overflow. */
@@ -1546,7 +1413,7 @@ button.tbl-row:focus-visible {
   gap: 9px;
   padding: 7px 12px;
   background: var(--danger-soft);
-  border-bottom: 1px solid var(--danger-line);
+  border-bottom: 1px solid var(--border);
   border-radius: var(--radius) var(--radius) 0 0;
   color: var(--danger);
 }
@@ -1603,16 +1470,16 @@ button.tbl-row:focus-visible {
 .chip {
   font-size: var(--fs-1);
   color: var(--text-2);
-  border: 1px solid var(--line-strong);
-  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   border-radius: var(--radius-sm);
   padding: 2px 7px;
   white-space: nowrap;
 }
 
 .esc-narration {
-  border-left: 2px solid var(--agent);
-  background: var(--bg-inset);
+  border-left: 2px solid var(--accent);
+  background: var(--surface-2);
   padding: 9px 11px;
   font-size: var(--fs-2);
   line-height: 1.5;
@@ -1637,13 +1504,13 @@ button.tbl-row:focus-visible {
   gap: 6px;
   margin: 0 -12px;
   padding: 10px 12px 12px;
-  background: var(--bg-panel);
+  background: var(--surface);
   border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .btn {
-  border: 1px solid var(--line-strong);
-  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   color: var(--text);
   border-radius: var(--radius-sm);
   padding: 7px 4px;
@@ -1658,7 +1525,7 @@ button.tbl-row:focus-visible {
 }
 
 .btn:hover:not(:disabled) {
-  background: var(--bg-hover);
+  background: var(--surface-2);
   border-color: var(--text-3);
 }
 
@@ -1670,7 +1537,7 @@ button.tbl-row:focus-visible {
 }
 
 .btn:focus-visible {
-  outline: 2px solid var(--agent);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -1682,8 +1549,8 @@ button.tbl-row:focus-visible {
 .btn-pending {
   opacity: 1;
   color: var(--text-2);
-  border-color: var(--line-strong);
-  background: var(--bg-inset);
+  border-color: var(--border);
+  background: var(--surface-2);
   /* Four of these sit in a 4-column grid; the label must not force overflow. */
   font-size: var(--fs-1);
   padding: 8px 2px;
@@ -1696,7 +1563,7 @@ button.tbl-row:focus-visible {
 
 .btn-approve:not(:disabled) {
   color: var(--ok);
-  border-color: var(--ok-line);
+  border-color: var(--border);
   background: var(--ok-soft);
 }
 .btn-approve:hover:not(:disabled) {
@@ -1706,7 +1573,7 @@ button.tbl-row:focus-visible {
 
 .btn-reject:not(:disabled) {
   color: var(--danger);
-  border-color: var(--danger-line);
+  border-color: var(--border);
   background: var(--danger-soft);
 }
 .btn-reject:hover:not(:disabled) {
@@ -1715,13 +1582,13 @@ button.tbl-row:focus-visible {
 }
 
 .btn-why:not(:disabled) {
-  color: var(--agent);
-  border-color: var(--agent-line);
-  background: var(--agent-soft);
+  color: var(--accent);
+  border-color: var(--border);
+  background: var(--accent-soft);
 }
 .btn-why:hover:not(:disabled) {
   background: rgba(109, 127, 242, 0.22);
-  border-color: var(--agent);
+  border-color: var(--accent);
 }
 
 .btn-ghost {
@@ -1739,7 +1606,7 @@ button.tbl-row:focus-visible {
 
 .dept {
   padding: 5px 0 6px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
 }
 
 .dept:first-child {
@@ -1783,7 +1650,7 @@ button.tbl-row:focus-visible {
 
 .bar {
   height: 4px;
-  background: var(--bg-inset);
+  background: var(--surface-2);
   border-radius: var(--radius-sm);
   overflow: hidden;
   margin-top: 5px;
@@ -1793,7 +1660,7 @@ button.tbl-row:focus-visible {
 .bar-lg {
   height: 10px;
   overflow: visible;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   margin-top: 4px;
 }
 
@@ -1877,14 +1744,14 @@ button.tbl-row:focus-visible {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
+  background: var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .replay-fig {
-  background: var(--bg-raised);
+  background: var(--surface-2);
   padding: 8px 12px;
 }
 
@@ -1970,8 +1837,8 @@ button.tbl-row:focus-visible {
 .modal {
   width: 100%;
   max-width: 760px;
-  background: var(--bg-panel);
-  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 26px 70px rgba(0, 0, 0, 0.6);
   animation: modalIn 170ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
@@ -1993,7 +1860,7 @@ button.tbl-row:focus-visible {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
 }
 
 .modal-head .panel-note {
@@ -2009,7 +1876,7 @@ button.tbl-row:focus-visible {
 .modal-close {
   margin-left: auto;
   color: var(--text-3);
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   width: 24px;
   height: 24px;
@@ -2021,17 +1888,17 @@ button.tbl-row:focus-visible {
 }
 
 .modal-head .panel-note + .modal-close,
-.modal-head .badge + .modal-close {
+.modal-head .chip + .modal-close {
   margin-left: 0;
 }
 
-.modal-head .badge {
+.modal-head .chip {
   margin-left: auto;
 }
 
 .modal-close:hover {
   color: var(--text);
-  background: var(--bg-hover);
+  background: var(--surface-2);
 }
 
 .modal-body {
@@ -2046,7 +1913,7 @@ button.tbl-row:focus-visible {
   gap: 12px;
   flex-wrap: wrap;
   padding-bottom: 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
 }
 
 .audit-outcome {
@@ -2154,14 +2021,14 @@ button.tbl-row:focus-visible {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
+  background: var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .state-cell {
-  background: var(--bg-inset);
+  background: var(--surface-2);
   padding: 11px 13px;
 }
 
@@ -2205,8 +2072,8 @@ button.tbl-row:focus-visible {
 }
 
 .narration-box {
-  border-left: 2px solid var(--agent);
-  background: var(--bg-inset);
+  border-left: 2px solid var(--accent);
+  background: var(--surface-2);
   padding: 11px 13px;
   font-size: var(--fs-2);
   line-height: 1.6;
@@ -2220,19 +2087,19 @@ button.tbl-row:focus-visible {
 /* email preview */
 
 .mail {
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  background: var(--bg-inset);
+  background: var(--surface-2);
 }
 
 .mail-head {
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   padding: 12px 14px;
   display: grid;
   grid-template-columns: 66px minmax(0, 1fr);
   gap: 5px 12px;
-  background: var(--bg-raised);
+  background: var(--surface-2);
 }
 
 .mail-key {
@@ -2285,8 +2152,8 @@ button.tbl-row:focus-visible {
   right: 16px;
   bottom: 16px;
   width: 244px;
-  background: var(--bg-panel);
-  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.62);
   z-index: 80;
@@ -2298,7 +2165,7 @@ button.tbl-row:focus-visible {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
 }
 
 .demo-title {
@@ -2323,17 +2190,17 @@ button.tbl-row:focus-visible {
   width: 100%;
   text-align: left;
   padding: 6px 8px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg-raised);
+  background: var(--surface-2);
   font-size: var(--fs-1);
   color: var(--text-2);
 }
 
 .demo-btn:hover:not(:disabled) {
   color: var(--text);
-  border-color: var(--agent-line);
-  background: var(--agent-soft);
+  border-color: var(--border);
+  background: var(--accent-soft);
 }
 
 .demo-btn-key {
@@ -2343,7 +2210,7 @@ button.tbl-row:focus-visible {
 
 .demo-status {
   padding: 7px 10px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--border);
   font-size: var(--fs-1);
   color: var(--text-3);
   display: flex;
@@ -2400,7 +2267,7 @@ button.tbl-row:focus-visible {
 .fatal-detail {
   font-size: var(--fs-3);
   color: var(--text-2);
-  border: 1px solid var(--danger-line);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 6px 12px;
   max-width: 80ch;
@@ -2422,7 +2289,6 @@ button.tbl-row:focus-visible {
   color: var(--text-3);
   font-weight: 500;
 }
-.panel-reference .panel-head .badge,
 .panel-reference .panel-head .outcome,
 .panel-reference .panel-head .chip-row {
   display: none;
@@ -2433,7 +2299,7 @@ button.tbl-row:focus-visible {
 }
 
 .panel-hero {
-  border-color: var(--agent-line);
+  border-color: var(--border);
 }
 
 /* The panel the agent last wrote to: agent-blue border for three seconds. */
@@ -2545,7 +2411,7 @@ button.tbl-row:focus-visible {
 }
 
 .narrative-text-btn:focus-visible {
-  outline: 1px solid var(--agent);
+  outline: 1px solid var(--accent);
   outline-offset: 3px;
 }
 
@@ -2567,14 +2433,14 @@ button.tbl-row:focus-visible {
 /* Inline text button — used by nav arrows, "back to ledger", drawer close. */
 .link-btn {
   font-size: var(--fs-1);
-  color: var(--agent);
+  color: var(--accent);
   padding: 2px 4px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
 }
 
 .link-btn:hover:not(:disabled) {
-  background: var(--agent-soft);
+  background: var(--accent-soft);
 }
 
 .link-btn:disabled {
@@ -2583,13 +2449,13 @@ button.tbl-row:focus-visible {
 }
 
 .link-btn:focus-visible {
-  outline: 1px solid var(--agent);
+  outline: 1px solid var(--accent);
 }
 
 /* CFO override marker — always text, colour reinforces. */
 .chip-override {
   color: var(--warn);
-  border-color: var(--warn-line);
+  border-color: var(--border);
   background: var(--warn-soft);
   font-weight: 700;
 }
@@ -2597,7 +2463,7 @@ button.tbl-row:focus-visible {
 .override-box {
   margin-top: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--warn-line);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--warn);
   background: var(--warn-soft);
   border-radius: var(--radius-sm);
@@ -2678,7 +2544,7 @@ button.tbl-row:focus-visible {
 }
 
 .wk-hyp {
-  color: var(--agent);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -2692,8 +2558,8 @@ button.tbl-row:focus-visible {
 }
 
 .wk-row-selected {
-  background-color: var(--bg-raised);
-  box-shadow: inset 3px 0 0 var(--agent);
+  background-color: var(--surface-2);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .wk-flag {
@@ -2730,7 +2596,7 @@ button.tbl-row:focus-visible {
   gap: 10px;
   align-items: center;
   padding: 7px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
 }
 
 .why-row:last-child {
@@ -2774,10 +2640,6 @@ button.tbl-row:focus-visible {
   color: var(--text-3);
 }
 
-.panel-breach {
-  border-color: var(--danger-line);
-}
-
 /* What-if form. */
 .whatif-form {
   display: grid;
@@ -2797,35 +2659,13 @@ button.tbl-row:focus-visible {
   color: var(--text-3);
 }
 
-.input {
-  width: 100%;
-  min-width: 0;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--bg-inset);
-  color: var(--text);
-  font-size: var(--fs-2);
-}
-
-.input:focus {
-  outline: 1px solid var(--agent);
-  border-color: var(--agent);
-}
-
-select.input {
-  appearance: none;
-  -webkit-appearance: none;
-}
-
 .verdict {
   margin-top: 10px;
   padding: 9px 11px;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--border);
   border-left-width: 3px;
   border-radius: var(--radius-sm);
-  background: var(--bg-inset);
+  background: var(--surface-2);
   font-size: var(--fs-2);
   line-height: 1.5;
   color: var(--text-2);
@@ -2836,7 +2676,7 @@ select.input {
 }
 
 .verdict-ok {
-  border-color: var(--ok-line);
+  border-color: var(--border);
   border-left-color: var(--ok);
 }
 .verdict-ok .verdict-title {
@@ -2844,7 +2684,7 @@ select.input {
 }
 
 .verdict-danger {
-  border-color: var(--danger-line);
+  border-color: var(--border);
   border-left-color: var(--danger);
 }
 .verdict-danger .verdict-title {
@@ -2852,7 +2692,7 @@ select.input {
 }
 
 .verdict-warn {
-  border-color: var(--warn-line);
+  border-color: var(--border);
   border-left-color: var(--warn);
 }
 .verdict-warn .verdict-title {
@@ -2892,7 +2732,7 @@ select.input {
   gap: 10px;
   align-items: center;
   padding: 6px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   font-size: var(--fs-2);
   cursor: pointer;
 }
@@ -2907,7 +2747,7 @@ select.input {
 }
 
 .scenario input {
-  accent-color: var(--agent);
+  accent-color: var(--accent);
   width: 14px;
   height: 14px;
   margin: 0;
@@ -2930,7 +2770,7 @@ select.input {
   gap: 12px;
   flex-wrap: wrap;
   padding: 10px 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   font-size: var(--fs-2);
   color: var(--text-3);
 }
@@ -2943,7 +2783,7 @@ select.input {
 
 .drawer-section {
   padding: 8px 14px 10px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
 }
 
 .drawer-section:last-child {
@@ -3023,7 +2863,7 @@ select.input {
   align-items: center;
   gap: 8px 18px;
   padding: 8px 14px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
 }
 
 .filter-group {
@@ -3037,27 +2877,6 @@ select.input {
   font-size: var(--fs-1);
   color: var(--text-3);
   margin-right: 3px;
-}
-
-.filter-chip {
-  font-size: var(--fs-1);
-  padding: 2px 8px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  color: var(--text-2);
-  background: var(--bg-raised);
-  white-space: nowrap;
-}
-
-.filter-chip:hover {
-  border-color: var(--agent-line);
-  color: var(--text);
-}
-
-.filter-chip-on {
-  color: var(--agent);
-  border-color: var(--agent-line);
-  background: var(--agent-soft);
 }
 
 .ledger-row {
@@ -3082,7 +2901,7 @@ select.input {
 
 .res-held {
   font-size: var(--fs-1);
-  color: var(--agent);
+  color: var(--accent);
 }
 
 @media (max-width: 1400px) {
@@ -3102,8 +2921,8 @@ select.input {
 
 @media (prefers-reduced-motion: reduce) {
   *,
-  *::before,
-  *::after {
+*::before,
+*::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
@@ -3126,8 +2945,8 @@ textarea {
   font: inherit;
   font-size: var(--fs-2);
   color: var(--text);
-  background: var(--bg-inset);
-  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 7px 10px;
   min-height: 34px;
@@ -3143,8 +2962,8 @@ input[inputmode="decimal"] {
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  border-color: var(--agent);
-  box-shadow: 0 0 0 3px var(--agent-soft);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 input:disabled,
 select:disabled,
@@ -3194,7 +3013,7 @@ select {
 .tabs {
   display: flex;
   gap: 2px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--border);
   margin-bottom: 10px;
   overflow-x: auto;
 }
@@ -3216,7 +3035,7 @@ select {
 .tab-active,
 .tab[aria-selected="true"] {
   color: var(--text);
-  border-bottom-color: var(--agent);
+  border-bottom-color: var(--accent);
 }
 .tab-count {
   font-size: var(--fs-1);
@@ -3230,10 +3049,10 @@ select {
   transition: background-color 120ms ease;
 }
 .tbl-row-clickable:hover {
-  background-color: var(--bg-hover);
+  background-color: var(--surface-2);
 }
 .tbl-row-clickable:focus-visible {
-  outline: 2px solid var(--agent);
+  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 .tbl-sort {
@@ -3277,8 +3096,8 @@ select {
 }
 @media (max-width: 1400px) {
   .page-cols-7-5,
-  .page-cols-8-4,
-  .page-cols-5-7 {
+.page-cols-8-4,
+.page-cols-5-7 {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -3291,7 +3110,7 @@ select {
   width: 44px;
   height: 24px;
   border-radius: var(--radius);
-  background: var(--line-strong);
+  background: var(--border);
   border: 0;
   cursor: pointer;
   transition: background 160ms ease;
@@ -3321,9 +3140,9 @@ select {
 
 /* --- Inset / drawer ------------------------------------------------------ */
 .inset {
-  background: var(--bg-inset);
-  border: 1px solid var(--line);
-  border-left: 2px solid var(--agent);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
 }
@@ -3399,7 +3218,7 @@ select {
   font-weight: 500;
 }
 
-.panel-reference .panel-head :is(.chip, .badge, .outcome, .log-chip, .chip-row) {
+.panel-reference .panel-head :is(.chip, .outcome, .chip-row) {
   display: none;
 }
 
@@ -3410,12 +3229,7 @@ select {
 /* ---- Chip ---------------------------------------------------------------- */
 
 .chip,
-.badge,
-.log-chip,
 .outcome,
-.tag-agent,
-.tag-human,
-.filter-chip,
 .rule-sev,
 .wk-flag,
 .res-held {
@@ -3437,17 +3251,12 @@ select {
 }
 
 .chip-ok,
-.badge-ok,
-.badge-live,
-.log-chip-ok,
 .outcome-APPROVED {
   color: var(--ok);
   background: var(--ok-soft);
 }
 
 .chip-warn,
-.badge-mock,
-.log-chip-warn,
 .outcome-ESCALATED,
 .chip-override {
   color: var(--warn);
@@ -3455,8 +3264,6 @@ select {
 }
 
 .chip-danger,
-.badge-danger,
-.log-chip-danger,
 .outcome-REJECTED,
 .wk-flag {
   color: var(--danger);
@@ -3465,22 +3272,16 @@ select {
 
 .chip-accent,
 .chip-agent,
-.badge-agent,
-.log-chip-agent,
-.tag-agent,
-.filter-chip-on,
 .res-held {
   color: var(--accent);
   background: var(--accent-soft);
 }
 
-.chip-btn,
-.filter-chip {
+.chip-btn {
   cursor: pointer;
 }
 
-.chip-btn:hover,
-.filter-chip:hover {
+.chip-btn:hover {
   color: var(--text);
   border: 0;
 }
@@ -3735,8 +3536,7 @@ button.tbl-row:focus-visible,
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 select,
 textarea,
-.field,
-.input {
+.field {
   font: inherit;
   font-size: var(--fs-2);
   color: var(--text);
@@ -3759,8 +3559,8 @@ textarea {
   line-height: 1.5;
 }
 
-:is(input, select, textarea, .field, .input):focus-visible,
-:is(input, select, textarea, .field, .input):focus {
+:is(input, select, textarea, .field):focus-visible,
+:is(input, select, textarea, .field):focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
@@ -3967,11 +3767,6 @@ textarea {
   font-size: var(--fs-3);
   font-weight: 500;
   color: var(--text);
-}
-
-.brand-mark {
-  font-size: var(--fs-3);
-  font-weight: 600;
 }
 
 /* ---- Modal, demo panel, tooltip ------------------------------------------ */

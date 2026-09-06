@@ -182,7 +182,7 @@ function Ring({ progress, idle, overdue }: { progress: number; idle: boolean; ov
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const dash = c * clamp01(progress);
-  const colour = idle ? "var(--text-3)" : overdue ? "var(--warn)" : "var(--agent)";
+  const colour = idle ? "var(--text-3)" : overdue ? "var(--warn)" : "var(--accent)";
   return (
     <svg
       width={size}

@@ -19,7 +19,7 @@ interface Props {
 }
 
 /**
- * The one panel chrome every tile on the board uses: uppercase tracked title
+ * The one panel chrome every tile on the board uses: sentence-case title
  * left, contextual chip right, hairline beneath, body that scrolls inside a
  * fixed-height cell rather than growing the page.
  */
