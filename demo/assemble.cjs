@@ -2,13 +2,17 @@
  * Assembles the demo video with ffmpeg.
  *
  *   [intro: Runway hero clip, blurred and darkened, title on top]
+ *   → [orchestrator: the Agent Orchestrator board that planned the build]
  *   → [walkthrough recording + lower-third captions]
  *   → [outro card]
  *
+ * The orchestrator beat only appears when out/orchestrator.png exists.
+ *
  * Optional audio, mixed in when present:
- *   out/vo/NN.mp3     one voice-over clip per scene (index matches scenes.json)
- *   out/vo/intro.mp3  spoken title
- *   out/ambient.mp3   ambient bed, looped under everything at low level
+ *   out/vo/NN.mp3            one voice-over clip per scene (index matches scenes.json)
+ *   out/vo/intro.mp3         spoken title
+ *   out/vo/orchestrator.mp3  narration for the "how it was built" beat
+ *   out/ambient.mp3          ambient bed, looped under everything at low level
  *
  * Output: out/runway-demo.mp4
  */
@@ -23,6 +27,7 @@ const FONT_B = "C\\:/Windows/Fonts/segoeuib.ttf";
 const W = 1920, H = 1080, FPS = 30;
 const XF = 0.6; // crossfade seconds
 const INTRO_S = 5;
+const ORCH_S = 8; // the "how it was built" beat
 const OUTRO_S = 4;
 
 function run(args, quiet = false) {
@@ -112,12 +117,36 @@ run([
   "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p", "-an", "outro.mp4",
 ]);
 
+// The "how it was built" beat: the Agent Orchestrator board that planned this
+// build as parallel tasks. A still, framed on the product background, with an
+// eyebrow line, a lower-third caption, and a gentle fade. Static on purpose —
+// a push-in would make the board text unreadable.
+const ORCH_CAPTION =
+  "The whole build — engine, adapters, UI — was planned and shipped as parallel tasks in Agent Orchestrator.";
+if (exists("orchestrator.png")) {
+  const eyebrow = textFile("orch-eyebrow", "How Runway was built");
+  const cap = textFile("orch-cap", ORCH_CAPTION);
+  run([
+    "-loop", "1", "-t", String(ORCH_S), "-i", "orchestrator.png",
+    "-vf",
+    `scale=${W - 160}:${H - 200}:force_original_aspect_ratio=decrease,` +
+      `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=0x131417,fps=${FPS},format=yuv420p,` +
+      `drawtext=fontfile='${FONT}':textfile='${eyebrow}':fontsize=30:fontcolor=0x8b93ff:x=(w-text_w)/2:y=46,` +
+      `drawtext=fontfile='${FONT}':textfile='${cap}':fontsize=34:fontcolor=white:box=1:boxcolor=0x131417@0.82:boxborderw=22:x=(w-text_w)/2:y=h-118,` +
+      `fade=t=in:st=0:d=0.5,fade=t=out:st=${ORCH_S - 0.5}:d=0.5`,
+    "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p", "-an", "orchestrator.mp4",
+  ]);
+}
+
 // ---------------------------------------------------------------------------
 // 3. Video: crossfade the segments
 // ---------------------------------------------------------------------------
-const segments = ["intro.mp4", "walkthrough.mp4", "outro.mp4"];
+const segments = ["intro.mp4", ...(exists("orchestrator.mp4") ? ["orchestrator.mp4"] : []), "walkthrough.mp4", "outro.mp4"];
 const durs = segments.map(duration);
-const introDur = durs[0];
+// Start time of each segment on the crossfaded timeline.
+const segStart = durs.map((_, i) => durs.slice(0, i).reduce((a, b) => a + b, 0) - i * XF);
+const orchIdx = segments.indexOf("orchestrator.mp4");
+const walkIdx = segments.indexOf("walkthrough.mp4");
 const norm = segments.map((_, i) => `[${i}:v]scale=${W}:${H}:force_original_aspect_ratio=decrease,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=0x131417,fps=${FPS},format=yuv420p,setpts=PTS-STARTPTS[v${i}]`);
 let chain = "", prev = "v0", offset = 0;
 for (let i = 1; i < segments.length; i++) {
@@ -137,7 +166,7 @@ run([
 // ---------------------------------------------------------------------------
 // 4. Audio: voice-over per scene + ambient bed, then mux
 // ---------------------------------------------------------------------------
-const walkOffset = introDur - XF; // where the walkthrough starts on the final timeline
+const walkOffset = segStart[walkIdx]; // where the walkthrough starts on the final timeline
 const audioInputs = [];
 const audioFilters = [];
 const mixLabels = [];
@@ -158,7 +187,11 @@ function addVo(file, at, windowSecs) {
   return { d, tempo };
 }
 
-if (exists("vo/intro.mp3")) addVo("vo/intro.mp3", 0.6, introDur - 0.8);
+if (exists("vo/intro.mp3")) addVo("vo/intro.mp3", segStart[0] + 0.6, durs[0] - 0.8);
+if (orchIdx >= 0 && exists("vo/orchestrator.mp3")) {
+  const { d, tempo } = addVo("vo/orchestrator.mp3", segStart[orchIdx] + 0.4, durs[orchIdx]);
+  console.log(`vo orchestrator          ${d.toFixed(1)}s in a ${durs[orchIdx].toFixed(1)}s window${tempo > 1 ? ` (tempo ×${tempo.toFixed(2)})` : ""}`);
+}
 scenes.forEach((s, i) => {
   const f = `vo/${String(i).padStart(2, "0")}.mp3`;
   if (!exists(f)) return;

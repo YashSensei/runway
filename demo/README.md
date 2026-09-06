@@ -4,6 +4,12 @@ Produces `out/runway-demo.mp4`: a ~2 minute narrated walkthrough of the product,
 recorded from the real app, with Runway-generated intro footage, voice-over and
 an ambient bed, assembled with ffmpeg.
 
+The sequence is: title → **how it was built** (the Agent Orchestrator board that
+planned the build, from `ao-img.png`) → walkthrough → outro. The orchestrator
+beat is [Untrivial-ai/agent-orchestrator](https://github.com/Untrivial-ai/agent-orchestrator):
+the `runaway` project's tasks — `ui/ux changes`, `llm adapter`, `email adapter`,
+`company agent` — are the parallel workstreams this repo was built from.
+
 ```
 record.cjs        Playwright drives the live app through the demo scenes and
                   records 1920×1080 video + a still per scene + scenes.json
@@ -48,6 +54,10 @@ files the video is silent.
   clip up (max 1.3×) if it still spills over.
 - Image-to-video garbles UI text, so the hero clip is only ever used blurred
   and dimmed as the intro backdrop. Do not show it at readable scale.
+- The orchestrator beat is a still (`ao-img.png`), held for 8s and read at
+  natural scale — its board text must stay legible, so it does not move. Drop
+  `ao-img.png` into `out/orchestrator.png` before assembling; `assemble.cjs`
+  skips the beat if it is absent.
 - `out/` is git-ignored: it holds a 10 MB recording, the generated audio and
   the final 18 MB video.
 - The Runway API key is read from the environment only. If it was ever pasted
